@@ -32,6 +32,7 @@
       color: var(--ink);
       padding: 0 13px;
       cursor: pointer;
+      touch-action: manipulation;
     }
     button.primary {
       background: var(--accent);
@@ -221,19 +222,80 @@
     }
     video { display: none; }
     @media (max-width: 860px) {
-      .shell { grid-template-columns: 1fr; }
+      body { background: #eee9dc; }
+      .shell {
+        display: flex;
+        flex-direction: column;
+        min-height: 100vh;
+      }
       aside {
+        order: 2;
         min-height: auto;
         border-right: 0;
-        border-bottom: 1px solid var(--line);
+        border-bottom: 0;
+        padding: 18px;
       }
-      main { padding: 18px; align-items: start; }
-      canvas { max-height: none; }
+      main {
+        order: 1;
+        position: sticky;
+        top: 0;
+        z-index: 3;
+        padding: 12px 14px;
+        align-items: start;
+        border-bottom: 1px solid rgba(0,0,0,.12);
+        background: rgba(244,241,232,.96);
+        backdrop-filter: blur(16px);
+      }
+      .brand {
+        margin-bottom: 12px;
+      }
+      .preview-wrap {
+        width: min(100%, 310px);
+      }
+      canvas {
+        max-height: 52vh;
+        box-shadow: 0 14px 34px rgba(0,0,0,.14);
+      }
+      .note {
+        display: none;
+      }
+      .actions {
+        position: sticky;
+        bottom: 0;
+        z-index: 2;
+        padding: 12px 0 calc(12px + env(safe-area-inset-bottom));
+        margin: 12px -18px 0;
+        background: rgba(244,241,232,.96);
+        border-top: 1px solid var(--line);
+        backdrop-filter: blur(16px);
+      }
+      .actions button {
+        min-height: 46px;
+      }
     }
     @media (max-width: 520px) {
-      aside { padding: 18px; }
+      aside { padding: 16px; }
       .row, .actions { grid-template-columns: 1fr; }
       h1 { font-size: 21px; }
+      .field { padding: 14px 0; }
+      .drop { min-height: 92px; padding: 16px 12px; }
+      .slot {
+        grid-template-columns: 30px 1fr 68px;
+        gap: 8px;
+      }
+      .segment, .caption-row {
+        grid-template-columns: 30px 1fr 48px;
+        gap: 8px;
+      }
+      .chip {
+        height: 28px;
+      }
+      .preview-wrap {
+        width: min(100%, 245px);
+      }
+      canvas {
+        max-height: 46vh;
+      }
     }
   </style>
 </head>
@@ -250,7 +312,7 @@
           <input id="multiFiles" type="file" accept="video/*,.mov,.mp4,.m4v" multiple>
           <div>
             <strong>一次选择 3 个 MOV/MP4</strong>
-            <span>按文件名顺序放到上、中、下；也可以单独替换。</span>
+            <span>单个视频不超过 120MB / 30 秒，按文件名顺序放到上、中、下。</span>
           </div>
         </div>
       </div>
@@ -283,8 +345,8 @@
       <div class="field">
         <div class="label">动态参数</div>
         <div class="row">
-          <label><span class="hint">片段循环 / 秒</span><input id="clipLength" type="number" min="0.3" max="15" step="0.1" value="3"></label>
-          <label><span class="hint">导出时长 / 秒</span><input id="exportLength" type="number" min="1" max="20" step="0.5" value="5"></label>
+          <label><span class="hint">片段循环 / 秒</span><input id="clipLength" type="number" min="0.3" max="8" step="0.1" value="3"></label>
+          <label><span class="hint">导出时长 / 秒</span><input id="exportLength" type="number" min="1" max="10" step="0.5" value="5"></label>
         </div>
       </div>
 
@@ -320,6 +382,11 @@
     const captionInputs = ['captionA', 'captionB', 'captionC'].map(id => document.getElementById(id));
     const captionValues = ['captionAValue', 'captionBValue', 'captionCValue'].map(id => document.getElementById(id));
     const labels = ['上', '中', '下'];
+    const MAX_VIDEO_MB = 120;
+    const MAX_VIDEO_BYTES = MAX_VIDEO_MB * 1024 * 1024;
+    const MAX_VIDEO_SECONDS = 30;
+    const MAX_TOTAL_MB = 380;
+    const MAX_TOTAL_BYTES = MAX_TOTAL_MB * 1024 * 1024;
     let slots = Array.from({ length: 3 }, () => ({ file: null, url: '', video: null, duration: 0 }));
     let playing = false;
     let rafId = 0;
@@ -333,10 +400,13 @@
       return Math.max(min, Math.min(max, value));
     }
     function getClipLength() {
-      return clamp(Number(document.getElementById('clipLength').value), 0.3, 15);
+      return clamp(Number(document.getElementById('clipLength').value), 0.3, 8);
     }
     function getExportLength() {
-      return clamp(Number(document.getElementById('exportLength').value), 1, 20);
+      return clamp(Number(document.getElementById('exportLength').value), 1, 10);
+    }
+    function formatSize(bytes) {
+      return `${(bytes / 1024 / 1024).toFixed(bytes > 10 * 1024 * 1024 ? 0 : 1)}MB`;
     }
     function readyCount() {
       return slots.filter(slot => slot.video && slot.duration > 0).length;
@@ -484,6 +554,10 @@
         setStatus('这里只接受 MOV/MP4/M4V 视频。', true);
         return;
       }
+      if (file.size > MAX_VIDEO_BYTES) {
+        setStatus(`${labels[index]}方视频太大：${formatSize(file.size)}，单个视频上限 ${MAX_VIDEO_MB}MB。`, true);
+        return;
+      }
       const wasPlaying = playing;
       pausePreview('正在读取视频...');
       const oldSlot = slots[index];
@@ -501,6 +575,12 @@
         video.onerror = reject;
         video.load();
       });
+      if ((video.duration || 0) > MAX_VIDEO_SECONDS) {
+        URL.revokeObjectURL(url);
+        video.remove();
+        setStatus(`${labels[index]}方视频太长：${video.duration.toFixed(1)} 秒，单个视频上限 ${MAX_VIDEO_SECONDS} 秒。`, true);
+        return;
+      }
       slots[index] = { file, url, video, duration: video.duration || 0 };
       updateLoadHint();
       await resetSegments();
@@ -514,6 +594,12 @@
         return;
       }
       picked.sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: 'base' }));
+      const selected = picked.slice(0, 3);
+      const totalBytes = selected.reduce((sum, file) => sum + file.size, 0);
+      if (totalBytes > MAX_TOTAL_BYTES) {
+        setStatus(`3 个视频合计 ${formatSize(totalBytes)}，总上限 ${MAX_TOTAL_MB}MB。`, true);
+        return;
+      }
       for (let i = 0; i < 3; i += 1) await loadFileIntoSlot(i, picked[i]);
       setStatus('三个视频已按文件名顺序放入上、中、下。');
     }
@@ -535,12 +621,40 @@
       slots.forEach((slot, index) => form.append(`start${index}`, String(getStart(index))));
       captionInputs.forEach((input, index) => form.append(`caption${index}`, input.value.trim()));
       try {
-        const response = await fetch('/api/render', { method: 'POST', body: form });
-        if (!response.ok) {
-          const data = await response.json().catch(() => ({}));
-          throw new Error(data.error || '导出失败。');
-        }
-        const blob = await response.blob();
+        const blob = await new Promise((resolve, reject) => {
+          const xhr = new XMLHttpRequest();
+          xhr.open('POST', '/api/render');
+          xhr.responseType = 'blob';
+          xhr.upload.onprogress = event => {
+            if (!event.lengthComputable) {
+              setStatus('正在上传视频...');
+              return;
+            }
+            const percent = Math.round((event.loaded / event.total) * 100);
+            setStatus(`正在上传视频 ${percent}%`);
+          };
+          xhr.upload.onload = () => {
+            setStatus('上传完成，正在渲染 MP4...');
+          };
+          xhr.onload = async () => {
+            if (xhr.status >= 200 && xhr.status < 300) {
+              resolve(xhr.response);
+              return;
+            }
+            if (xhr.response && xhr.response.type.includes('application/json')) {
+              const text = await xhr.response.text();
+              try {
+                reject(new Error(JSON.parse(text).error || '导出失败。'));
+              } catch {
+                reject(new Error('导出失败。'));
+              }
+              return;
+            }
+            reject(new Error('导出失败。'));
+          };
+          xhr.onerror = () => reject(new Error('网络连接失败，请重试。'));
+          xhr.send(form);
+        });
         const link = document.createElement('a');
         link.href = URL.createObjectURL(blob);
         link.download = `live-triptych-${Date.now()}.mp4`;

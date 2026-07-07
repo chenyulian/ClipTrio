@@ -12,7 +12,12 @@ const publicDir = path.join(__dirname, 'public');
 const tmpRoot = path.join(__dirname, 'tmp');
 const port = Number(process.env.PORT || 3000);
 const ffmpegPath = process.env.FFMPEG_PATH || 'ffmpeg';
-const maxUploadBytes = 1024 * 1024 * 900;
+const ffprobePath = process.env.FFPROBE_PATH || 'ffprobe';
+const maxVideoBytes = 1024 * 1024 * 120;
+const maxUploadBytes = 1024 * 1024 * 380;
+const maxVideoSeconds = 30;
+const maxExportSeconds = 10;
+const maxClipSeconds = 8;
 const labels = ['top', 'middle', 'bottom'];
 
 const mimeTypes = {
@@ -135,6 +140,38 @@ function run(command, args, cwd) {
   });
 }
 
+function probeDuration(filePath, cwd) {
+  return new Promise((resolve, reject) => {
+    const child = spawn(ffprobePath, [
+      '-v', 'error',
+      '-show_entries', 'format=duration',
+      '-of', 'default=noprint_wrappers=1:nokey=1',
+      filePath
+    ], { cwd, windowsHide: true });
+    let stdout = '';
+    let stderr = '';
+    child.stdout.on('data', chunk => {
+      stdout += chunk.toString();
+    });
+    child.stderr.on('data', chunk => {
+      stderr += chunk.toString();
+    });
+    child.on('error', reject);
+    child.on('close', code => {
+      if (code !== 0) {
+        reject(new Error(stderr || 'Unable to inspect video duration.'));
+        return;
+      }
+      const duration = Number(stdout.trim());
+      if (!Number.isFinite(duration) || duration <= 0) {
+        reject(new Error('Unable to inspect video duration.'));
+        return;
+      }
+      resolve(duration);
+    });
+  });
+}
+
 async function writeGradientMask(maskPath, width = 1080, height = 640) {
   const header = Buffer.from(`P5\n${width} ${height}\n255\n`, 'ascii');
   const pixels = Buffer.alloc(width * height);
@@ -164,8 +201,8 @@ function buildDrawText(caption, yExpression) {
 }
 
 async function renderMp4(files, fields, jobDir) {
-  const exportLength = sanitizeNumber(fields.exportLength, 5, 1, 20);
-  const clipLength = sanitizeNumber(fields.clipLength, 3, 0.3, 15);
+  const exportLength = sanitizeNumber(fields.exportLength, 5, 1, maxExportSeconds);
+  const clipLength = sanitizeNumber(fields.clipLength, 3, 0.3, maxClipSeconds);
   const starts = labels.map((_, index) => sanitizeNumber(fields[`start${index}`], 0, 0, 9999));
   const captions = labels.map((_, index) => sanitizeCaption(fields[`caption${index}`]));
   const captionIndexes = captions.map((caption, index) => caption ? index : -1).filter(index => index >= 0);
@@ -260,10 +297,13 @@ async function handleRender(req, res) {
       if (part.filename) {
         const slot = labels.indexOf(part.name);
         if (slot === -1) continue;
+        if (part.data.length > maxVideoBytes) {
+          throw new Error(`Each video must be ${Math.round(maxVideoBytes / 1024 / 1024)}MB or smaller.`);
+        }
         const ext = path.extname(part.filename).toLowerCase() || '.mov';
         const filePath = path.join(jobDir, `${slot}${ext}`);
         await fsp.writeFile(filePath, part.data);
-        files[slot] = { path: filePath, filename: part.filename };
+        files[slot] = { path: filePath, filename: part.filename, size: part.data.length };
       } else {
         fields[part.name] = part.data.toString('utf8');
       }
@@ -271,6 +311,14 @@ async function handleRender(req, res) {
 
     if (files.filter(Boolean).length !== 3) {
       throw new Error('Please upload top, middle, and bottom videos.');
+    }
+
+    for (const file of files) {
+      const duration = await probeDuration(file.path, jobDir);
+      if (duration > maxVideoSeconds) {
+        throw new Error(`Video "${file.filename}" is ${duration.toFixed(1)}s. Max duration is ${maxVideoSeconds}s.`);
+      }
+      file.duration = duration;
     }
 
     const outputPath = await renderMp4(files, fields, jobDir);
