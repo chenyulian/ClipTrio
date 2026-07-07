@@ -112,6 +112,35 @@
       font-size: 12px;
       line-height: 1.45;
     }
+    .facts {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 8px;
+      width: min(100%, 560px);
+    }
+    .fact {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: rgba(255,255,255,.5);
+      padding: 8px 9px;
+      min-width: 0;
+    }
+    .fact strong {
+      display: block;
+      color: var(--ink);
+      font-size: 13px;
+      line-height: 1.2;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .fact span {
+      display: block;
+      margin-top: 2px;
+      color: var(--muted);
+      font-size: 11px;
+      line-height: 1.3;
+    }
     .drop {
       position: relative;
       min-height: 104px;
@@ -200,7 +229,44 @@
       gap: 10px;
       margin-top: 18px;
     }
-    .status { min-height: 18px; margin-top: 14px; }
+    .status-panel {
+      margin-top: 12px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: rgba(255,255,255,.5);
+      padding: 10px;
+    }
+    .status {
+      min-height: 18px;
+      color: var(--muted);
+    }
+    .status.error { color: var(--danger); }
+    .status.success { color: var(--accent-dark); }
+    .status.busy { color: var(--ink); }
+    .progress {
+      display: none;
+      margin-top: 9px;
+      height: 7px;
+      overflow: hidden;
+      border-radius: 999px;
+      background: rgba(31,122,90,.14);
+    }
+    .progress.show { display: block; }
+    .progress-bar {
+      width: 0%;
+      height: 100%;
+      border-radius: inherit;
+      background: var(--accent);
+      transition: width .18s ease;
+    }
+    .progress.indeterminate .progress-bar {
+      width: 42%;
+      animation: progressSlide 1.15s ease-in-out infinite;
+    }
+    @keyframes progressSlide {
+      0% { transform: translateX(-120%); }
+      100% { transform: translateX(260%); }
+    }
     .stage {
       width: min(100%, 760px);
       display: grid;
@@ -227,24 +293,20 @@
         display: flex;
         flex-direction: column;
         min-height: 100vh;
+        padding-bottom: calc(128px + env(safe-area-inset-bottom));
       }
       aside {
-        order: 2;
+        order: 1;
         min-height: auto;
         border-right: 0;
         border-bottom: 0;
         padding: 18px;
       }
       main {
-        order: 1;
-        position: sticky;
-        top: 0;
-        z-index: 3;
-        padding: 12px 14px;
+        order: 2;
+        padding: 18px 14px 24px;
         align-items: start;
-        border-bottom: 1px solid rgba(0,0,0,.12);
-        background: rgba(244,241,232,.96);
-        backdrop-filter: blur(16px);
+        border-top: 1px solid rgba(0,0,0,.12);
       }
       .brand {
         margin-bottom: 12px;
@@ -259,12 +321,19 @@
       .note {
         display: none;
       }
+      .facts {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        width: min(100%, 310px);
+      }
       .actions {
-        position: sticky;
+        position: fixed;
+        left: 0;
+        right: 0;
         bottom: 0;
-        z-index: 2;
-        padding: 12px 0 calc(12px + env(safe-area-inset-bottom));
-        margin: 12px -18px 0;
+        z-index: 10;
+        grid-template-columns: 1fr 1fr;
+        padding: 10px 16px calc(10px + env(safe-area-inset-bottom));
+        margin: 0;
         background: rgba(244,241,232,.96);
         border-top: 1px solid var(--line);
         backdrop-filter: blur(16px);
@@ -272,10 +341,24 @@
       .actions button {
         min-height: 46px;
       }
+      .status-panel {
+        position: fixed;
+        left: 0;
+        right: 0;
+        bottom: calc(67px + env(safe-area-inset-bottom));
+        z-index: 10;
+        margin: 0;
+        padding: 10px 16px;
+        border-left: 0;
+        border-right: 0;
+        border-radius: 0;
+        background: rgba(244,241,232,.96);
+        backdrop-filter: blur(16px);
+      }
     }
     @media (max-width: 520px) {
       aside { padding: 16px; }
-      .row, .actions { grid-template-columns: 1fr; }
+      .row { grid-template-columns: 1fr; }
       h1 { font-size: 21px; }
       .field { padding: 14px 0; }
       .drop { min-height: 92px; padding: 16px 12px; }
@@ -293,6 +376,15 @@
       .preview-wrap {
         width: min(100%, 245px);
       }
+      .facts {
+        width: min(100%, 245px);
+        gap: 6px;
+      }
+      .fact {
+        padding: 7px 6px;
+      }
+      .fact strong { font-size: 12px; }
+      .fact span { font-size: 10px; }
       canvas {
         max-height: 46vh;
       }
@@ -354,7 +446,12 @@
         <button id="play" type="button">预览</button>
         <button id="download" class="primary" type="button">导出 MP4</button>
       </div>
-      <div class="status" id="status"></div>
+      <div class="status-panel" aria-live="polite">
+        <div class="status" id="status">选择 3 个视频开始制作。</div>
+        <div class="progress" id="progress">
+          <div class="progress-bar" id="progressBar"></div>
+        </div>
+      </div>
     </aside>
 
     <main>
@@ -362,7 +459,11 @@
         <div class="preview-wrap">
           <canvas id="canvas" width="1080" height="1920"></canvas>
         </div>
-        <div class="note">输出为 1080×1920 H.264 MP4，更适合保存到手机后发小红书、抖音或朋友圈。</div>
+        <div class="facts">
+          <div class="fact"><strong id="factSource">0/3 视频</strong><span>素材状态</span></div>
+          <div class="fact"><strong id="factOutput">1080×1920</strong><span>H.264 MP4</span></div>
+          <div class="fact"><strong id="factLimit">≤120MB</strong><span>每个 ≤30秒</span></div>
+        </div>
       </div>
     </main>
   </div>
@@ -371,6 +472,11 @@
     const canvas = document.getElementById('canvas');
     const ctx = canvas.getContext('2d');
     const statusEl = document.getElementById('status');
+    const progressEl = document.getElementById('progress');
+    const progressBar = document.getElementById('progressBar');
+    const factSource = document.getElementById('factSource');
+    const factOutput = document.getElementById('factOutput');
+    const factLimit = document.getElementById('factLimit');
     const loadHint = document.getElementById('loadHint');
     const playBtn = document.getElementById('play');
     const downloadBtn = document.getElementById('download');
@@ -391,9 +497,22 @@
     let playing = false;
     let rafId = 0;
 
-    function setStatus(text, isError = false) {
+    function setStatus(text, state = 'idle') {
       statusEl.textContent = text;
-      statusEl.style.color = isError ? 'var(--danger)' : 'var(--muted)';
+      statusEl.className = `status ${state}`;
+    }
+    function setProgress(percent = 0, mode = 'hidden') {
+      progressEl.classList.toggle('show', mode !== 'hidden');
+      progressEl.classList.toggle('indeterminate', mode === 'indeterminate');
+      progressBar.style.width = mode === 'determinate' ? `${clamp(percent, 0, 100)}%` : '';
+    }
+    function setProcessing(isProcessing) {
+      downloadBtn.disabled = isProcessing || !isReady();
+      playBtn.disabled = isProcessing || !isReady();
+      multiFiles.disabled = isProcessing;
+      fileInputs.forEach(input => {
+        input.disabled = isProcessing;
+      });
     }
     function clamp(value, min, max) {
       if (Number.isNaN(value)) return min;
@@ -415,10 +534,17 @@
       return readyCount() === 3;
     }
     function updateLoadHint() {
-      loadHint.textContent = `${readyCount()} / 3`;
+      const count = readyCount();
+      const totalBytes = slots.reduce((sum, slot) => sum + (slot.file?.size || 0), 0);
+      loadHint.textContent = `${count} / 3`;
+      factSource.textContent = `${count}/3 视频`;
+      factOutput.textContent = `${getExportLength()}秒 MP4`;
+      factLimit.textContent = totalBytes ? `${formatSize(totalBytes)} / ${MAX_TOTAL_MB}MB` : `≤${MAX_VIDEO_MB}MB`;
       slots.forEach((slot, index) => {
-        nameEls[index].textContent = slot.file && slot.duration ? `${slot.file.name} · ${slot.duration.toFixed(1)}s` : '未选择';
+        nameEls[index].textContent = slot.file && slot.duration ? `${slot.file.name} · ${slot.duration.toFixed(1)}s · ${formatSize(slot.file.size)}` : '未选择';
       });
+      downloadBtn.disabled = !isReady();
+      playBtn.disabled = !isReady();
     }
     function getStart(index) {
       const maxStart = Math.max(0, (slots[index].duration || 0) - getClipLength() - 0.03);
@@ -537,7 +663,7 @@
     }
     async function startPreview() {
       if (!isReady()) {
-        setStatus('先把上、中、下三个视频都选好。', true);
+        setStatus('先把上、中、下三个视频都选好。', 'error');
         return;
       }
       playing = true;
@@ -546,16 +672,16 @@
       await Promise.all(slots.map(slot => slot.video.play()));
       cancelAnimationFrame(rafId);
       loopSegments();
-      setStatus('正在预览。');
+      setStatus('正在预览。', 'busy');
     }
     async function loadFileIntoSlot(index, file) {
       if (!file) return;
       if (!file.type.startsWith('video/') && !/\.(mov|mp4|m4v)$/i.test(file.name)) {
-        setStatus('这里只接受 MOV/MP4/M4V 视频。', true);
+        setStatus('这里只接受 MOV/MP4/M4V 视频。', 'error');
         return;
       }
       if (file.size > MAX_VIDEO_BYTES) {
-        setStatus(`${labels[index]}方视频太大：${formatSize(file.size)}，单个视频上限 ${MAX_VIDEO_MB}MB。`, true);
+        setStatus(`${labels[index]}方视频太大：${formatSize(file.size)}，单个视频上限 ${MAX_VIDEO_MB}MB。`, 'error');
         return;
       }
       const wasPlaying = playing;
@@ -578,7 +704,7 @@
       if ((video.duration || 0) > MAX_VIDEO_SECONDS) {
         URL.revokeObjectURL(url);
         video.remove();
-        setStatus(`${labels[index]}方视频太长：${video.duration.toFixed(1)} 秒，单个视频上限 ${MAX_VIDEO_SECONDS} 秒。`, true);
+        setStatus(`${labels[index]}方视频太长：${video.duration.toFixed(1)} 秒，单个视频上限 ${MAX_VIDEO_SECONDS} 秒。`, 'error');
         return;
       }
       slots[index] = { file, url, video, duration: video.duration || 0 };
@@ -590,14 +716,14 @@
     async function loadMultiple(files) {
       const picked = Array.from(files).filter(file => file.type.startsWith('video/') || /\.(mov|mp4|m4v)$/i.test(file.name));
       if (picked.length < 3) {
-        setStatus('请一次选择至少 3 个 MOV/MP4。', true);
+        setStatus('请一次选择至少 3 个 MOV/MP4。', 'error');
         return;
       }
       picked.sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: 'base' }));
       const selected = picked.slice(0, 3);
       const totalBytes = selected.reduce((sum, file) => sum + file.size, 0);
       if (totalBytes > MAX_TOTAL_BYTES) {
-        setStatus(`3 个视频合计 ${formatSize(totalBytes)}，总上限 ${MAX_TOTAL_MB}MB。`, true);
+        setStatus(`3 个视频合计 ${formatSize(totalBytes)}，总上限 ${MAX_TOTAL_MB}MB。`, 'error');
         return;
       }
       for (let i = 0; i < 3; i += 1) await loadFileIntoSlot(i, picked[i]);
@@ -605,13 +731,13 @@
     }
     async function exportMp4() {
       if (!isReady()) {
-        setStatus('先把上、中、下三个视频都选好。', true);
+        setStatus('先把上、中、下三个视频都选好。', 'error');
         return;
       }
       const wasPlaying = playing;
       pausePreview('正在上传并渲染 MP4...');
-      downloadBtn.disabled = true;
-      playBtn.disabled = true;
+      setProcessing(true);
+      setProgress(0, 'determinate');
       const form = new FormData();
       form.append('top', slots[0].file);
       form.append('middle', slots[1].file);
@@ -627,14 +753,16 @@
           xhr.responseType = 'blob';
           xhr.upload.onprogress = event => {
             if (!event.lengthComputable) {
-              setStatus('正在上传视频...');
+              setStatus('正在上传视频...', 'busy');
               return;
             }
             const percent = Math.round((event.loaded / event.total) * 100);
-            setStatus(`正在上传视频 ${percent}%`);
+            setStatus(`正在上传视频 ${percent}%`, 'busy');
+            setProgress(percent, 'determinate');
           };
           xhr.upload.onload = () => {
-            setStatus('上传完成，正在渲染 MP4...');
+            setStatus('上传完成，正在渲染 MP4...', 'busy');
+            setProgress(100, 'indeterminate');
           };
           xhr.onload = async () => {
             if (xhr.status >= 200 && xhr.status < 300) {
@@ -660,18 +788,19 @@
         link.download = `live-triptych-${Date.now()}.mp4`;
         link.click();
         setTimeout(() => URL.revokeObjectURL(link.href), 1500);
-        setStatus('MP4 导出完成。');
+        setStatus('MP4 导出完成。', 'success');
+        setProgress(100, 'determinate');
       } catch (error) {
-        setStatus(error.message || '导出失败。', true);
+        setStatus(error.message || '导出失败。', 'error');
+        setProgress(0, 'hidden');
       } finally {
-        downloadBtn.disabled = false;
-        playBtn.disabled = false;
+        setProcessing(false);
         if (wasPlaying) startPreview();
       }
     }
 
-    multiFiles.addEventListener('change', event => loadMultiple(event.target.files).catch(error => setStatus(error.message, true)));
-    fileInputs.forEach((input, index) => input.addEventListener('change', event => loadFileIntoSlot(index, event.target.files[0]).catch(error => setStatus(error.message, true))));
+    multiFiles.addEventListener('change', event => loadMultiple(event.target.files).catch(error => setStatus(error.message, 'error')));
+    fileInputs.forEach((input, index) => input.addEventListener('change', event => loadFileIntoSlot(index, event.target.files[0]).catch(error => setStatus(error.message, 'error'))));
     startSliders.forEach(slider => slider.addEventListener('input', () => { syncLabels(); resetSegments().catch(() => {}); }));
     captionInputs.forEach(input => input.addEventListener('input', () => {
       const cleaned = sanitizeCaption(input.value);
@@ -679,8 +808,11 @@
       syncCaptionCounts();
       drawFrame();
     }));
-    ['clipLength', 'exportLength'].forEach(id => document.getElementById(id).addEventListener('input', () => resetSegments().catch(() => drawFrame())));
-    playBtn.addEventListener('click', () => playing ? pausePreview() : startPreview().catch(error => setStatus(error.message, true)));
+    ['clipLength', 'exportLength'].forEach(id => document.getElementById(id).addEventListener('input', () => {
+      updateLoadHint();
+      resetSegments().catch(() => drawFrame());
+    }));
+    playBtn.addEventListener('click', () => playing ? pausePreview() : startPreview().catch(error => setStatus(error.message, 'error')));
     downloadBtn.addEventListener('click', () => exportMp4());
 
     syncLabels();
