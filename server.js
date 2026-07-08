@@ -13,6 +13,7 @@ const tmpRoot = path.join(__dirname, 'tmp');
 const port = Number(process.env.PORT || 3000);
 const ffmpegPath = process.env.FFMPEG_PATH || 'ffmpeg';
 const ffprobePath = process.env.FFPROBE_PATH || 'ffprobe';
+const renderProxyUrl = process.env.RENDER_PROXY_URL || '';
 const maxVideoBytes = 1024 * 1024 * 120;
 const maxUploadBytes = 1024 * 1024 * 380;
 const maxVideoSeconds = 30;
@@ -336,7 +337,39 @@ async function handleRender(req, res) {
   } catch (error) {
     fsp.rm(jobDir, { recursive: true, force: true }).catch(() => {});
     const missingFfmpeg = error.code === 'ENOENT' || /not recognized|ENOENT|no such file/i.test(error.message);
-    sendError(res, missingFfmpeg ? 500 : 400, missingFfmpeg ? 'FFmpeg is not available. Use Docker or set FFMPEG_PATH.' : error.message);
+    sendError(
+      res,
+      missingFfmpeg ? 500 : 400,
+      missingFfmpeg
+        ? '当前服务找不到 FFmpeg/FFprobe，无法导出 MP4。请使用 Docker 版服务，或安装 FFmpeg 并设置 FFMPEG_PATH/FFPROBE_PATH 后重启服务。'
+        : error.message
+    );
+  }
+}
+
+async function handleRenderProxy(req, res) {
+  try {
+    const body = await readRequestBody(req);
+    const upstream = await fetch(renderProxyUrl, {
+      method: 'POST',
+      headers: {
+        'content-type': req.headers['content-type'] || 'application/octet-stream',
+        'content-length': String(body.length)
+      },
+      body
+    });
+    const responseBody = Buffer.from(await upstream.arrayBuffer());
+    const headers = {
+      'content-type': upstream.headers.get('content-type') || 'application/octet-stream',
+      'content-length': responseBody.length,
+      'cache-control': upstream.headers.get('cache-control') || 'no-store'
+    };
+    const disposition = upstream.headers.get('content-disposition');
+    if (disposition) headers['content-disposition'] = disposition;
+    res.writeHead(upstream.status, headers);
+    res.end(responseBody);
+  } catch (error) {
+    sendError(res, 502, `渲染代理失败：${error.message || '无法连接渲染服务。'}`);
   }
 }
 
@@ -369,6 +402,10 @@ const server = http.createServer((req, res) => {
     return;
   }
   if (req.method === 'POST' && req.url === '/api/render') {
+    if (renderProxyUrl) {
+      handleRenderProxy(req, res);
+      return;
+    }
     handleRender(req, res);
     return;
   }

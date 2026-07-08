@@ -402,7 +402,7 @@
       height: 100vh;
       padding: 22px 26px;
       display: grid;
-      grid-template-rows: auto minmax(0, 1fr) auto;
+      grid-template-rows: auto minmax(0, 1fr);
       gap: 14px;
     }
 
@@ -452,38 +452,6 @@
     }
 
     video { display: none; }
-
-    .timeline {
-      width: min(100%, 720px);
-      justify-self: center;
-      display: grid;
-      gap: 8px;
-      padding: 12px 14px;
-      border: 1px solid var(--line);
-      border-radius: 8px;
-      background: rgba(251, 252, 251, .72);
-    }
-
-    .timeline-row {
-      display: grid;
-      grid-template-columns: 46px minmax(0, 1fr) 48px;
-      gap: 10px;
-      align-items: center;
-    }
-
-    .mini-track {
-      height: 8px;
-      border-radius: 999px;
-      background: #dde4df;
-      overflow: hidden;
-    }
-
-    .mini-fill {
-      width: 0%;
-      height: 100%;
-      border-radius: inherit;
-      background: var(--accent);
-    }
 
     .facts {
       display: grid;
@@ -631,7 +599,6 @@
       .right-panel .panel-inner {
         display: block;
       }
-      .timeline { display: none; }
       .topbar {
         align-items: flex-start;
         flex-direction: column;
@@ -742,12 +709,6 @@
           <canvas id="canvas" width="1080" height="1920"></canvas>
         </div>
       </div>
-
-      <div class="timeline" aria-hidden="true">
-        <div class="timeline-row"><span class="meta">上</span><div class="mini-track"><div class="mini-fill" id="trackA"></div></div><span class="value" id="timeA">0.0s</span></div>
-        <div class="timeline-row"><span class="meta">中</span><div class="mini-track"><div class="mini-fill" id="trackB"></div></div><span class="value" id="timeB">0.0s</span></div>
-        <div class="timeline-row"><span class="meta">下</span><div class="mini-track"><div class="mini-fill" id="trackC"></div></div><span class="value" id="timeC">0.0s</span></div>
-      </div>
     </main>
 
     <aside class="panel right-panel">
@@ -811,8 +772,6 @@
     const clipLengthHint = document.getElementById('clipLengthHint');
     const captionInputs = ['captionA', 'captionB', 'captionC'].map(id => document.getElementById(id));
     const captionValues = ['captionAValue', 'captionBValue', 'captionCValue'].map(id => document.getElementById(id));
-    const trackFills = ['trackA', 'trackB', 'trackC'].map(id => document.getElementById(id));
-    const timeEls = ['timeA', 'timeB', 'timeC'].map(id => document.getElementById(id));
     const checks = {
       files: document.getElementById('checkFiles'),
       duration: document.getElementById('checkDuration'),
@@ -923,7 +882,7 @@
       downloadBtn.disabled = !isReady();
       playBtn.disabled = !isReady();
       updateChecks();
-      syncTimeline();
+      syncSegmentWindows();
     }
 
     function getStart(index) {
@@ -939,19 +898,17 @@
         endValues[index].textContent = formatTime(end);
       });
       clipLengthHint.textContent = `循环 ${getClipLength().toFixed(1)}s`;
-      syncTimeline();
+      syncSegmentWindows();
     }
 
-    function syncTimeline() {
+    function syncSegmentWindows() {
       slots.forEach((slot, index) => {
         const start = getStart(index);
         const duration = slot.duration || 0;
         const progress = duration ? (start / duration) * 100 : 0;
         const width = duration ? (Math.min(getClipLength(), duration) / duration) * 100 : 34;
-        trackFills[index].style.width = `${clamp(progress, 0, 100)}%`;
         segmentWindows[index].style.left = `${clamp(progress, 0, 100)}%`;
         segmentWindows[index].style.width = `${clamp(width, 3, 100)}%`;
-        timeEls[index].textContent = `${start.toFixed(1)}s`;
       });
     }
 
@@ -1072,7 +1029,7 @@
 
     async function resetSegments() {
       await Promise.all(slots.map((slot, index) => slot.video ? seekVideo(slot.video, getStart(index), slot.duration) : Promise.resolve()));
-      syncTimeline();
+      syncSegmentWindows();
       drawFrame();
     }
 
@@ -1168,6 +1125,7 @@
         return;
       }
       const wasPlaying = playing;
+      let exportSucceeded = false;
       pausePreview('正在上传并渲染 MP4...');
       setProcessing(true);
       setProgress(0, 'determinate');
@@ -1204,16 +1162,18 @@
               resolve(xhr.response);
               return;
             }
-            if (xhr.response && xhr.response.type.includes('application/json')) {
+            if (xhr.response) {
               const text = await xhr.response.text();
-              try {
-                reject(new Error(JSON.parse(text).error || '导出失败。'));
-              } catch {
-                reject(new Error('导出失败。'));
+              if (text) {
+                try {
+                  reject(new Error(JSON.parse(text).error || text));
+                } catch {
+                  reject(new Error(text));
+                }
+                return;
               }
-              return;
             }
-            reject(new Error('导出失败。'));
+            reject(new Error(`导出失败，服务返回 ${xhr.status}。`));
           };
           xhr.onerror = () => reject(new Error('网络连接失败，请重试。'));
           xhr.send(form);
@@ -1224,6 +1184,7 @@
         link.download = `clip-trio-${Date.now()}.mp4`;
         link.click();
         setTimeout(() => URL.revokeObjectURL(link.href), 1500);
+        exportSucceeded = true;
         setStatus('MP4 导出完成。', 'success');
         setProgress(100, 'determinate');
       } catch (error) {
@@ -1231,7 +1192,7 @@
         setProgress(0, 'hidden');
       } finally {
         setProcessing(false);
-        if (wasPlaying) startPreview();
+        if (wasPlaying && exportSucceeded) startPreview();
       }
     }
 
