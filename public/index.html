@@ -6,252 +6,474 @@
   <title>ClipTrio</title>
   <style>
     :root {
-      --bg: #f4f1e8;
-      --ink: #161713;
-      --muted: #6e7169;
-      --panel: #fffefa;
-      --line: #d8d3c6;
-      --accent: #1f7a5a;
-      --accent-dark: #145840;
-      --danger: #9f2b22;
+      --bg: #eef0ee;
+      --surface: #fbfcfb;
+      --surface-2: #f5f7f5;
+      --ink: #141816;
+      --muted: #67706b;
+      --soft: #8a928d;
+      --line: #d8ded9;
+      --line-strong: #c4ccc6;
+      --accent: #17735f;
+      --accent-dark: #105644;
+      --accent-soft: #dceee9;
+      --danger: #b42318;
+      --warning: #9a6700;
+      --shadow: 0 22px 55px rgba(18, 28, 24, .12);
     }
+
     * { box-sizing: border-box; }
+
     body {
       margin: 0;
       min-height: 100vh;
       background: var(--bg);
       color: var(--ink);
       font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      letter-spacing: 0;
+      overflow: hidden;
     }
+
     button, input { font: inherit; }
+
     button {
-      min-height: 40px;
-      border: 1px solid var(--line);
-      border-radius: 8px;
-      background: var(--panel);
+      min-height: 38px;
+      border: 1px solid var(--line-strong);
+      border-radius: 7px;
+      background: var(--surface);
       color: var(--ink);
-      padding: 0 13px;
+      padding: 0 12px;
       cursor: pointer;
+      transition: background .16s ease, border-color .16s ease, color .16s ease, transform .16s ease;
       touch-action: manipulation;
     }
+
+    button:hover:not(:disabled) {
+      border-color: #9da8a1;
+      background: #fff;
+    }
+
+    button:active:not(:disabled) { transform: translateY(1px); }
+    button:disabled { opacity: .55; cursor: not-allowed; }
+
     button.primary {
       background: var(--accent);
       border-color: var(--accent);
-      color: white;
-      font-weight: 720;
+      color: #fff;
+      font-weight: 760;
     }
-    button.primary:hover { background: var(--accent-dark); border-color: var(--accent-dark); }
-    button:disabled { opacity: .55; cursor: not-allowed; }
+
+    button.primary:hover:not(:disabled) {
+      background: var(--accent-dark);
+      border-color: var(--accent-dark);
+    }
+
     input[type="text"], input[type="number"] {
       width: 100%;
-      height: 40px;
-      border: 1px solid var(--line);
-      border-radius: 8px;
-      background: var(--panel);
-      color: var(--ink);
-      padding: 0 11px;
+      height: 38px;
       min-width: 0;
+      border: 1px solid var(--line-strong);
+      border-radius: 7px;
+      background: var(--surface);
+      color: var(--ink);
+      padding: 0 10px;
+      outline: none;
     }
-    input[type="range"] { width: 100%; accent-color: var(--accent); }
+
+    input[type="text"]:focus, input[type="number"]:focus {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px rgba(23, 115, 95, .14);
+    }
+
+    input[type="range"] {
+      width: 100%;
+      accent-color: var(--accent);
+    }
+
     .shell {
-      min-height: 100vh;
+      height: 100vh;
       display: grid;
-      grid-template-columns: minmax(340px, 460px) 1fr;
+      grid-template-columns: 380px minmax(480px, 1fr) 340px;
+      gap: 0;
     }
-    aside {
-      min-height: 100vh;
+
+    .panel {
+      min-width: 0;
+      height: 100vh;
+      background: rgba(251, 252, 251, .78);
+      backdrop-filter: blur(14px);
+    }
+
+    .left-panel {
       border-right: 1px solid var(--line);
-      background: rgba(255,255,255,.45);
-      padding: 26px;
       overflow: auto;
     }
-    main {
-      min-width: 0;
-      padding: 26px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
+
+    .right-panel {
+      border-left: 1px solid var(--line);
+      overflow: auto;
     }
+
+    .panel-inner {
+      padding: 22px;
+    }
+
     .brand {
       display: flex;
       align-items: center;
       justify-content: space-between;
       gap: 14px;
-      margin-bottom: 22px;
+      margin-bottom: 20px;
     }
+
     h1 {
       margin: 0;
-      font-size: 24px;
-      line-height: 1.12;
+      font-size: 23px;
+      line-height: 1.08;
       letter-spacing: 0;
     }
+
+    .subtitle {
+      display: block;
+      margin-top: 5px;
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 560;
+    }
+
     .mark {
+      flex: 0 0 auto;
       border: 1px solid var(--ink);
-      border-radius: 6px;
+      border-radius: 7px;
       padding: 5px 7px 4px;
-      font-size: 13px;
+      font-size: 12px;
       line-height: 1;
       font-weight: 850;
     }
-    .field {
+
+    .section {
       border-top: 1px solid var(--line);
       padding: 17px 0;
     }
-    .field:first-of-type { border-top: 0; }
-    .label {
+
+    .section:first-of-type { border-top: 0; }
+
+    .section-title, .label {
       display: flex;
       justify-content: space-between;
       align-items: baseline;
       gap: 10px;
       margin-bottom: 10px;
       font-size: 13px;
-      font-weight: 760;
+      font-weight: 780;
     }
-    .hint, .status, .note {
+
+    .hint, .status, .note, .meta, .slot-detail {
       color: var(--muted);
       font-size: 12px;
       line-height: 1.45;
     }
-    .facts {
-      display: grid;
-      grid-template-columns: repeat(3, 1fr);
-      gap: 8px;
-      width: min(100%, 560px);
-    }
-    .fact {
-      border: 1px solid var(--line);
-      border-radius: 8px;
-      background: rgba(255,255,255,.5);
-      padding: 8px 9px;
-      min-width: 0;
-    }
-    .fact strong {
-      display: block;
-      color: var(--ink);
-      font-size: 13px;
-      line-height: 1.2;
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-    }
-    .fact span {
-      display: block;
-      margin-top: 2px;
-      color: var(--muted);
-      font-size: 11px;
-      line-height: 1.3;
-    }
-    .drop {
+
+    .source-panel {
       position: relative;
-      min-height: 104px;
       display: grid;
-      place-items: center;
-      border: 1.5px dashed #aaa695;
+      gap: 10px;
+      border: 1.5px dashed #98a39b;
       border-radius: 8px;
-      background: rgba(255,255,255,.58);
-      padding: 18px 16px;
-      text-align: center;
+      background: var(--surface-2);
+      padding: 10px;
       color: var(--muted);
+      transition: border-color .16s ease, background .16s ease, box-shadow .16s ease;
     }
-    .drop strong {
-      display: block;
-      color: var(--ink);
-      margin-bottom: 5px;
-      font-size: 14px;
+
+    .source-panel.dragging,
+    .slot.dragging {
+      border-color: var(--accent);
+      background: var(--accent-soft);
+      box-shadow: inset 0 0 0 1px rgba(23, 115, 95, .25);
     }
-    .drop input {
-      position: absolute;
-      inset: 0;
-      opacity: 0;
-      cursor: pointer;
-    }
-    .slots, .caption-grid { display: grid; gap: 9px; }
-    .slot {
+
+    .source-actions {
       display: grid;
-      grid-template-columns: 34px 1fr auto;
+      grid-template-columns: 1fr;
+      gap: 8px;
+    }
+
+    .batch-pick {
+      position: absolute;
+      inset: auto;
+      width: 1px;
+      height: 1px;
+      opacity: 0;
+      pointer-events: none;
+    }
+
+    .source-button {
+      width: 100%;
+      min-height: 40px;
+      border-style: dashed;
+      color: var(--accent-dark);
+      font-weight: 720;
+    }
+
+    .source-caption {
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.4;
+      text-align: center;
+    }
+
+    .slots, .caption-grid { display: grid; gap: 9px; }
+
+    .slot {
+      position: relative;
+      display: grid;
+      grid-template-columns: 38px minmax(0, 1fr) 72px;
       gap: 10px;
       align-items: center;
       border: 1px solid var(--line);
-      background: rgba(255,255,255,.45);
+      background: var(--surface-2);
       border-radius: 8px;
       padding: 8px;
     }
+
+    .slot.ready {
+      border-color: rgba(23, 115, 95, .42);
+      background: #f6fbf9;
+    }
+
+    .slot:hover {
+      border-color: #b7c2ba;
+    }
+
     .chip {
       height: 30px;
-      border: 1px solid var(--line);
-      border-radius: 8px;
+      border: 1px solid var(--line-strong);
+      border-radius: 7px;
       display: grid;
       place-items: center;
-      background: var(--panel);
+      background: var(--surface);
       font-size: 12px;
-      font-weight: 800;
+      font-weight: 820;
     }
+
+    .slot-text { min-width: 0; }
+
     .name {
       min-width: 0;
-      color: var(--muted);
+      color: var(--ink);
       font-size: 12px;
+      font-weight: 660;
       white-space: nowrap;
       overflow: hidden;
       text-overflow: ellipsis;
     }
+
+    .slot-detail {
+      margin-top: 2px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
     .pick {
       position: relative;
       overflow: hidden;
-      min-width: 74px;
+      min-width: 68px;
+      padding: 0 8px;
     }
+
     .pick input {
       position: absolute;
       inset: 0;
       opacity: 0;
       cursor: pointer;
     }
+
     .segment, .caption-row {
       display: grid;
-      grid-template-columns: 34px 1fr 52px;
+      grid-template-columns: 38px minmax(0, 1fr) 54px;
       gap: 10px;
       align-items: center;
       margin-top: 9px;
     }
+
     .value {
       color: var(--muted);
       font-size: 12px;
       text-align: right;
       font-variant-numeric: tabular-nums;
     }
+
     .row {
       display: grid;
       grid-template-columns: 1fr 1fr;
       gap: 10px;
     }
-    .actions {
+
+    label.stack {
       display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 10px;
-      margin-top: 18px;
+      gap: 6px;
     }
-    .status-panel {
-      margin-top: 12px;
+
+    .stage {
+      min-width: 0;
+      height: 100vh;
+      padding: 22px 26px;
+      display: grid;
+      grid-template-rows: auto minmax(0, 1fr) auto;
+      gap: 14px;
+    }
+
+    .topbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+    }
+
+    .topbar-title {
+      display: grid;
+      gap: 4px;
+    }
+
+    .topbar-title strong {
+      font-size: 14px;
+    }
+
+    .preview-actions {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .preview-shell {
+      min-height: 0;
+      display: grid;
+      place-items: center;
+      padding: 8px;
+    }
+
+    .preview-frame {
+      height: min(74vh, 760px);
+      aspect-ratio: 9 / 16;
+      display: grid;
+      place-items: center;
+      background: #111;
+      box-shadow: var(--shadow);
+    }
+
+    canvas {
+      width: 100%;
+      height: 100%;
+      display: block;
+      background: #fff;
+    }
+
+    video { display: none; }
+
+    .timeline {
+      width: min(100%, 720px);
+      justify-self: center;
+      display: grid;
+      gap: 8px;
+      padding: 12px 14px;
       border: 1px solid var(--line);
       border-radius: 8px;
-      background: rgba(255,255,255,.5);
-      padding: 10px;
+      background: rgba(251, 252, 251, .72);
     }
+
+    .timeline-row {
+      display: grid;
+      grid-template-columns: 46px minmax(0, 1fr) 48px;
+      gap: 10px;
+      align-items: center;
+    }
+
+    .mini-track {
+      height: 8px;
+      border-radius: 999px;
+      background: #dde4df;
+      overflow: hidden;
+    }
+
+    .mini-fill {
+      width: 0%;
+      height: 100%;
+      border-radius: inherit;
+      background: var(--accent);
+    }
+
+    .facts {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 9px;
+    }
+
+    .fact {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--surface-2);
+      padding: 10px 11px;
+      min-width: 0;
+    }
+
+    .fact strong {
+      display: block;
+      color: var(--ink);
+      font-size: 14px;
+      line-height: 1.2;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .fact span {
+      display: block;
+      margin-top: 3px;
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.35;
+    }
+
+    .actions {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 10px;
+      margin-top: 12px;
+    }
+
+    .actions button {
+      min-height: 44px;
+    }
+
+    .status-panel {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--surface-2);
+      padding: 12px;
+    }
+
     .status {
-      min-height: 18px;
+      min-height: 20px;
       color: var(--muted);
     }
+
     .status.error { color: var(--danger); }
     .status.success { color: var(--accent-dark); }
     .status.busy { color: var(--ink); }
+
     .progress {
       display: none;
-      margin-top: 9px;
-      height: 7px;
+      margin-top: 10px;
+      height: 8px;
       overflow: hidden;
       border-radius: 999px;
-      background: rgba(31,122,90,.14);
+      background: rgba(23, 115, 95, .14);
     }
+
     .progress.show { display: block; }
+
     .progress-bar {
       width: 0%;
       height: 100%;
@@ -259,213 +481,205 @@
       background: var(--accent);
       transition: width .18s ease;
     }
+
     .progress.indeterminate .progress-bar {
       width: 42%;
       animation: progressSlide 1.15s ease-in-out infinite;
     }
+
+    .checklist {
+      display: grid;
+      gap: 8px;
+      margin-top: 12px;
+    }
+
+    .check {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--line-strong);
+    }
+
+    .check.done { color: var(--ink); }
+    .check.done .dot { background: var(--accent); }
+    .check.warn .dot { background: var(--warning); }
+
     @keyframes progressSlide {
       0% { transform: translateX(-120%); }
       100% { transform: translateX(260%); }
     }
-    .stage {
-      width: min(100%, 760px);
-      display: grid;
-      gap: 14px;
-      justify-items: center;
-    }
-    .preview-wrap {
-      width: min(100%, 560px);
-      display: grid;
-      place-items: center;
-    }
-    canvas {
-      width: auto;
-      max-width: 100%;
-      max-height: calc(100vh - 92px);
-      border: 1px solid rgba(0,0,0,.12);
-      background: #fff;
-      box-shadow: 0 24px 70px rgba(0,0,0,.16);
-    }
-    video { display: none; }
-    @media (max-width: 860px) {
-      body { background: #eee9dc; }
+
+    @media (max-width: 1120px) {
       .shell {
-        display: flex;
-        flex-direction: column;
-        min-height: 100vh;
-        padding-bottom: calc(128px + env(safe-area-inset-bottom));
+        grid-template-columns: 360px minmax(420px, 1fr);
       }
-      aside {
-        order: 1;
-        min-height: auto;
-        border-right: 0;
-        border-bottom: 0;
-        padding: 18px;
-      }
-      main {
-        order: 2;
-        padding: 18px 14px 24px;
-        align-items: start;
-        border-top: 1px solid rgba(0,0,0,.12);
-      }
-      .brand {
-        margin-bottom: 12px;
-      }
-      .preview-wrap {
-        width: min(100%, 310px);
-      }
-      canvas {
-        max-height: 52vh;
-        box-shadow: 0 14px 34px rgba(0,0,0,.14);
-      }
-      .note {
-        display: none;
-      }
-      .facts {
-        grid-template-columns: repeat(3, minmax(0, 1fr));
-        width: min(100%, 310px);
-      }
-      .actions {
-        position: fixed;
-        left: 0;
-        right: 0;
-        bottom: 0;
-        z-index: 10;
-        grid-template-columns: 1fr 1fr;
-        padding: 10px 16px calc(10px + env(safe-area-inset-bottom));
-        margin: 0;
-        background: rgba(244,241,232,.96);
-        border-top: 1px solid var(--line);
-        backdrop-filter: blur(16px);
-      }
-      .actions button {
-        min-height: 46px;
-      }
-      .status-panel {
-        position: fixed;
-        left: 0;
-        right: 0;
-        bottom: calc(67px + env(safe-area-inset-bottom));
-        z-index: 10;
-        margin: 0;
-        padding: 10px 16px;
+
+      .right-panel {
+        grid-column: 1 / -1;
         border-left: 0;
-        border-right: 0;
-        border-radius: 0;
-        background: rgba(244,241,232,.96);
-        backdrop-filter: blur(16px);
+        border-top: 1px solid var(--line);
+      }
+
+      .right-panel .panel-inner {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 16px;
       }
     }
+
+    @media (max-width: 860px) {
+      body { overflow: auto; }
+      .shell { display: block; }
+      .panel, .shell, .stage { height: auto; }
+      .left-panel, .right-panel { border: 0; overflow: visible; }
+      .stage {
+        padding: 18px 14px;
+      }
+      .preview-frame {
+        height: auto;
+        width: min(100%, 330px);
+      }
+      .right-panel .panel-inner {
+        display: block;
+      }
+      .timeline { display: none; }
+      .topbar {
+        align-items: flex-start;
+        flex-direction: column;
+      }
+    }
+
     @media (max-width: 520px) {
-      aside { padding: 16px; }
+      .panel-inner { padding: 16px; }
       .row { grid-template-columns: 1fr; }
       h1 { font-size: 21px; }
-      .field { padding: 14px 0; }
-      .drop { min-height: 92px; padding: 16px 12px; }
+      .section { padding: 14px 0; }
+      .drop { min-height: 104px; padding: 16px 12px; }
       .slot {
-        grid-template-columns: 30px 1fr 68px;
+        grid-template-columns: 32px minmax(0, 1fr) 66px;
         gap: 8px;
       }
       .segment, .caption-row {
-        grid-template-columns: 30px 1fr 48px;
+        grid-template-columns: 32px minmax(0, 1fr) 48px;
         gap: 8px;
       }
-      .chip {
-        height: 28px;
-      }
-      .preview-wrap {
-        width: min(100%, 245px);
-      }
-      .facts {
-        width: min(100%, 245px);
-        gap: 6px;
-      }
-      .fact {
-        padding: 7px 6px;
-      }
-      .fact strong { font-size: 12px; }
-      .fact span { font-size: 10px; }
-      canvas {
-        max-height: 46vh;
-      }
+      .chip { height: 28px; }
     }
   </style>
 </head>
 <body>
   <div class="shell">
-    <aside>
-      <div class="brand">
-        <h1>ClipTrio<br>动态三视频拼接</h1>
-        <div class="mark">MP4</div>
-      </div>
+    <aside class="panel left-panel">
+      <div class="panel-inner">
+        <div class="brand">
+          <h1>ClipTrio<span class="subtitle">动态三视频拼接工作台</span></h1>
+          <div class="mark">MP4</div>
+        </div>
 
-      <div class="field">
-        <div class="drop">
-          <input id="multiFiles" type="file" accept="video/*,.mov,.mp4,.m4v" multiple>
-          <div>
-            <strong>一次选择 3 个 MOV/MP4</strong>
-            <span>单个视频不超过 120MB / 30 秒，按文件名顺序放到上、中、下。</span>
+        <div class="section">
+          <div class="section-title">素材 <span class="hint" id="loadHint">0 / 3</span></div>
+          <div class="source-panel" id="dropZone">
+            <input class="batch-pick" id="multiFiles" type="file" accept="video/*,.mov,.mp4,.m4v" multiple>
+            <div class="slots">
+              <div class="slot" id="slotA" data-slot="0"><span class="chip">上</span><div class="slot-text"><div class="name" id="nameA">未选择</div><div class="slot-detail" id="detailA">拖入或选择视频</div></div><button class="pick" type="button">选择<input id="fileA" type="file" accept="video/*,.mov,.mp4,.m4v"></button></div>
+              <div class="slot" id="slotB" data-slot="1"><span class="chip">中</span><div class="slot-text"><div class="name" id="nameB">未选择</div><div class="slot-detail" id="detailB">拖入或选择视频</div></div><button class="pick" type="button">选择<input id="fileB" type="file" accept="video/*,.mov,.mp4,.m4v"></button></div>
+              <div class="slot" id="slotC" data-slot="2"><span class="chip">下</span><div class="slot-text"><div class="name" id="nameC">未选择</div><div class="slot-detail" id="detailC">拖入或选择视频</div></div><button class="pick" type="button">选择<input id="fileC" type="file" accept="video/*,.mov,.mp4,.m4v"></button></div>
+            </div>
+            <div class="source-actions">
+              <button class="source-button" id="multiPickButton" type="button">选择 3 个视频</button>
+              <div class="source-caption">也可以把 3 个文件拖到这里，或把单个文件拖到对应槽位。</div>
+            </div>
           </div>
         </div>
-      </div>
 
-      <div class="field">
-        <div class="label">视频位置 <span class="hint" id="loadHint">0 / 3</span></div>
-        <div class="slots">
-          <div class="slot"><span class="chip">上</span><span class="name" id="nameA">未选择</span><button class="pick" type="button">选择<input id="fileA" type="file" accept="video/*,.mov,.mp4,.m4v"></button></div>
-          <div class="slot"><span class="chip">中</span><span class="name" id="nameB">未选择</span><button class="pick" type="button">选择<input id="fileB" type="file" accept="video/*,.mov,.mp4,.m4v"></button></div>
-          <div class="slot"><span class="chip">下</span><span class="name" id="nameC">未选择</span><button class="pick" type="button">选择<input id="fileC" type="file" accept="video/*,.mov,.mp4,.m4v"></button></div>
+        <div class="section">
+          <div class="section-title">各视频起点 <span class="hint">按素材长度百分比定位</span></div>
+          <div class="segment"><span class="chip">上</span><input id="startA" type="range" min="0" max="1000" value="0"><span class="value" id="startAValue">0%</span></div>
+          <div class="segment"><span class="chip">中</span><input id="startB" type="range" min="0" max="1000" value="0"><span class="value" id="startBValue">0%</span></div>
+          <div class="segment"><span class="chip">下</span><input id="startC" type="range" min="0" max="1000" value="0"><span class="value" id="startCValue">0%</span></div>
         </div>
-      </div>
 
-      <div class="field">
-        <div class="label">各视频起点 <span class="hint">按各自长度百分比</span></div>
-        <div class="segment"><span class="chip">上</span><input id="startA" type="range" min="0" max="1000" value="0"><span class="value" id="startAValue">0%</span></div>
-        <div class="segment"><span class="chip">中</span><input id="startB" type="range" min="0" max="1000" value="0"><span class="value" id="startBValue">0%</span></div>
-        <div class="segment"><span class="chip">下</span><input id="startC" type="range" min="0" max="1000" value="0"><span class="value" id="startCValue">0%</span></div>
-      </div>
-
-      <div class="field">
-        <div class="label">字幕水印 <span class="hint">中英文数字，最多 18 字</span></div>
-        <div class="caption-grid">
-          <div class="caption-row"><span class="chip">上</span><input id="captionA" type="text" maxlength="18" placeholder="输入上方字幕"><span class="value" id="captionAValue">0/18</span></div>
-          <div class="caption-row"><span class="chip">中</span><input id="captionB" type="text" maxlength="18" placeholder="输入中间字幕"><span class="value" id="captionBValue">0/18</span></div>
-          <div class="caption-row"><span class="chip">下</span><input id="captionC" type="text" maxlength="18" placeholder="输入下方字幕"><span class="value" id="captionCValue">0/18</span></div>
+        <div class="section">
+          <div class="section-title">字幕水印 <span class="hint">中文、英文、数字，最多 18 字</span></div>
+          <div class="caption-grid">
+            <div class="caption-row"><span class="chip">上</span><input id="captionA" type="text" maxlength="18" placeholder="上方字幕，可留空"><span class="value" id="captionAValue">0/18</span></div>
+            <div class="caption-row"><span class="chip">中</span><input id="captionB" type="text" maxlength="18" placeholder="中间字幕，可留空"><span class="value" id="captionBValue">0/18</span></div>
+            <div class="caption-row"><span class="chip">下</span><input id="captionC" type="text" maxlength="18" placeholder="下方字幕，可留空"><span class="value" id="captionCValue">0/18</span></div>
+          </div>
         </div>
-      </div>
 
-      <div class="field">
-        <div class="label">动态参数</div>
-        <div class="row">
-          <label><span class="hint">片段循环 / 秒</span><input id="clipLength" type="number" min="0.3" max="8" step="0.1" value="3"></label>
-          <label><span class="hint">导出时长 / 秒</span><input id="exportLength" type="number" min="1" max="10" step="0.5" value="5"></label>
-        </div>
-      </div>
-
-      <div class="actions">
-        <button id="play" type="button">预览</button>
-        <button id="download" class="primary" type="button">导出 MP4</button>
-      </div>
-      <div class="status-panel" aria-live="polite">
-        <div class="status" id="status">选择 3 个视频开始制作。</div>
-        <div class="progress" id="progress">
-          <div class="progress-bar" id="progressBar"></div>
+        <div class="section">
+          <div class="section-title">动态参数</div>
+          <div class="row">
+            <label class="stack"><span class="hint">片段循环 / 秒</span><input id="clipLength" type="number" min="0.3" max="8" step="0.1" value="3"></label>
+            <label class="stack"><span class="hint">导出时长 / 秒</span><input id="exportLength" type="number" min="1" max="10" step="0.5" value="5"></label>
+          </div>
         </div>
       </div>
     </aside>
 
-    <main>
-      <div class="stage">
-        <div class="preview-wrap">
-          <canvas id="canvas" width="1080" height="1920"></canvas>
+    <main class="stage">
+      <div class="topbar">
+        <div class="topbar-title">
+          <strong>成片预览</strong>
+          <span class="hint">1080 x 1920，三段等高，导出为 H.264 MP4。</span>
         </div>
-        <div class="facts">
-          <div class="fact"><strong id="factSource">0/3 视频</strong><span>素材状态</span></div>
-          <div class="fact"><strong id="factOutput">1080×1920</strong><span>H.264 MP4</span></div>
-          <div class="fact"><strong id="factLimit">≤120MB</strong><span>每个 ≤30秒</span></div>
+        <div class="preview-actions">
+          <button id="play" type="button">预览</button>
         </div>
       </div>
+
+      <div class="preview-shell">
+        <div class="preview-frame">
+          <canvas id="canvas" width="1080" height="1920"></canvas>
+        </div>
+      </div>
+
+      <div class="timeline" aria-hidden="true">
+        <div class="timeline-row"><span class="meta">上</span><div class="mini-track"><div class="mini-fill" id="trackA"></div></div><span class="value" id="timeA">0.0s</span></div>
+        <div class="timeline-row"><span class="meta">中</span><div class="mini-track"><div class="mini-fill" id="trackB"></div></div><span class="value" id="timeB">0.0s</span></div>
+        <div class="timeline-row"><span class="meta">下</span><div class="mini-track"><div class="mini-fill" id="trackC"></div></div><span class="value" id="timeC">0.0s</span></div>
+      </div>
     </main>
+
+    <aside class="panel right-panel">
+      <div class="panel-inner">
+        <div>
+          <div class="section-title">导出状态</div>
+          <div class="status-panel" aria-live="polite">
+            <div class="status" id="status">选择 3 个视频开始制作。</div>
+            <div class="progress" id="progress">
+              <div class="progress-bar" id="progressBar"></div>
+            </div>
+          </div>
+          <div class="actions">
+            <button id="download" class="primary" type="button">导出 MP4</button>
+          </div>
+        </div>
+
+        <div>
+          <div class="section-title">文件与输出</div>
+          <div class="facts">
+            <div class="fact"><strong id="factSource">0/3 视频</strong><span>素材状态</span></div>
+            <div class="fact"><strong id="factOutput">5 秒 MP4</strong><span>H.264 / 1080 x 1920 / 30fps</span></div>
+            <div class="fact"><strong id="factLimit">≤ 120MB</strong><span>单个 ≤ 30 秒，总量 ≤ 380MB</span></div>
+          </div>
+          <div class="checklist">
+            <div class="check" id="checkFiles"><span class="dot"></span><span>3 个素材已就绪</span></div>
+            <div class="check" id="checkDuration"><span class="dot"></span><span>时长与体积符合限制</span></div>
+            <div class="check" id="checkPreview"><span class="dot"></span><span>预览确认后可导出</span></div>
+          </div>
+        </div>
+      </div>
+    </aside>
   </div>
 
   <script>
@@ -481,88 +695,156 @@
     const playBtn = document.getElementById('play');
     const downloadBtn = document.getElementById('download');
     const multiFiles = document.getElementById('multiFiles');
+    const multiPickButton = document.getElementById('multiPickButton');
+    const dropZone = document.getElementById('dropZone');
     const fileInputs = ['fileA', 'fileB', 'fileC'].map(id => document.getElementById(id));
     const nameEls = ['nameA', 'nameB', 'nameC'].map(id => document.getElementById(id));
+    const detailEls = ['detailA', 'detailB', 'detailC'].map(id => document.getElementById(id));
+    const slotEls = ['slotA', 'slotB', 'slotC'].map(id => document.getElementById(id));
     const startSliders = ['startA', 'startB', 'startC'].map(id => document.getElementById(id));
     const startValues = ['startAValue', 'startBValue', 'startCValue'].map(id => document.getElementById(id));
     const captionInputs = ['captionA', 'captionB', 'captionC'].map(id => document.getElementById(id));
     const captionValues = ['captionAValue', 'captionBValue', 'captionCValue'].map(id => document.getElementById(id));
+    const trackFills = ['trackA', 'trackB', 'trackC'].map(id => document.getElementById(id));
+    const timeEls = ['timeA', 'timeB', 'timeC'].map(id => document.getElementById(id));
+    const checks = {
+      files: document.getElementById('checkFiles'),
+      duration: document.getElementById('checkDuration'),
+      preview: document.getElementById('checkPreview')
+    };
+
     const labels = ['上', '中', '下'];
     const MAX_VIDEO_MB = 120;
     const MAX_VIDEO_BYTES = MAX_VIDEO_MB * 1024 * 1024;
     const MAX_VIDEO_SECONDS = 30;
     const MAX_TOTAL_MB = 380;
     const MAX_TOTAL_BYTES = MAX_TOTAL_MB * 1024 * 1024;
+
     let slots = Array.from({ length: 3 }, () => ({ file: null, url: '', video: null, duration: 0 }));
     let playing = false;
+    let previewSeen = false;
     let rafId = 0;
 
     function setStatus(text, state = 'idle') {
       statusEl.textContent = text;
       statusEl.className = `status ${state}`;
     }
+
     function setProgress(percent = 0, mode = 'hidden') {
       progressEl.classList.toggle('show', mode !== 'hidden');
       progressEl.classList.toggle('indeterminate', mode === 'indeterminate');
       progressBar.style.width = mode === 'determinate' ? `${clamp(percent, 0, 100)}%` : '';
     }
+
     function setProcessing(isProcessing) {
       downloadBtn.disabled = isProcessing || !isReady();
       playBtn.disabled = isProcessing || !isReady();
       multiFiles.disabled = isProcessing;
-      fileInputs.forEach(input => {
-        input.disabled = isProcessing;
-      });
+      fileInputs.forEach(input => { input.disabled = isProcessing; });
     }
+
     function clamp(value, min, max) {
       if (Number.isNaN(value)) return min;
       return Math.max(min, Math.min(max, value));
     }
+
     function getClipLength() {
       return clamp(Number(document.getElementById('clipLength').value), 0.3, 8);
     }
+
     function getExportLength() {
       return clamp(Number(document.getElementById('exportLength').value), 1, 10);
     }
+
     function formatSize(bytes) {
       return `${(bytes / 1024 / 1024).toFixed(bytes > 10 * 1024 * 1024 ? 0 : 1)}MB`;
     }
+
+    function formatVideoMeta(video) {
+      const width = video.videoWidth || 0;
+      const height = video.videoHeight || 0;
+      return width && height ? `${width}x${height}` : '读取中';
+    }
+
     function readyCount() {
       return slots.filter(slot => slot.video && slot.duration > 0).length;
     }
+
     function isReady() {
       return readyCount() === 3;
     }
+
+    function totalBytes() {
+      return slots.reduce((sum, slot) => sum + (slot.file?.size || 0), 0);
+    }
+
+    function updateChecks() {
+      const ready = isReady();
+      const withinTotal = totalBytes() <= MAX_TOTAL_BYTES;
+      checks.files.classList.toggle('done', ready);
+      checks.duration.classList.toggle('done', ready && withinTotal);
+      checks.duration.classList.toggle('warn', !withinTotal);
+      checks.preview.classList.toggle('done', ready && previewSeen);
+    }
+
     function updateLoadHint() {
       const count = readyCount();
-      const totalBytes = slots.reduce((sum, slot) => sum + (slot.file?.size || 0), 0);
+      const bytes = totalBytes();
       loadHint.textContent = `${count} / 3`;
       factSource.textContent = `${count}/3 视频`;
-      factOutput.textContent = `${getExportLength()}秒 MP4`;
-      factLimit.textContent = totalBytes ? `${formatSize(totalBytes)} / ${MAX_TOTAL_MB}MB` : `≤${MAX_VIDEO_MB}MB`;
+      factOutput.textContent = `${getExportLength()} 秒 MP4`;
+      factLimit.textContent = bytes ? `${formatSize(bytes)} / ${MAX_TOTAL_MB}MB` : `≤ ${MAX_VIDEO_MB}MB`;
+
       slots.forEach((slot, index) => {
-        nameEls[index].textContent = slot.file && slot.duration ? `${slot.file.name} · ${slot.duration.toFixed(1)}s · ${formatSize(slot.file.size)}` : '未选择';
+        const ready = Boolean(slot.file && slot.duration);
+        slotEls[index].classList.toggle('ready', ready);
+        nameEls[index].textContent = ready ? slot.file.name : '未选择';
+        detailEls[index].textContent = ready
+          ? `${slot.duration.toFixed(1)} 秒 · ${formatSize(slot.file.size)} · ${formatVideoMeta(slot.video)}`
+          : '拖入或选择视频';
+        const pickButton = slotEls[index].querySelector('.pick');
+        if (pickButton) pickButton.childNodes[0].nodeValue = ready ? '替换' : '选择';
       });
+
+      multiPickButton.textContent = count ? '重新选择 3 个视频' : '选择 3 个视频';
       downloadBtn.disabled = !isReady();
       playBtn.disabled = !isReady();
+      updateChecks();
+      syncTimeline();
     }
+
     function getStart(index) {
       const maxStart = Math.max(0, (slots[index].duration || 0) - getClipLength() - 0.03);
       return maxStart * (Number(startSliders[index].value) / 1000);
     }
+
     function syncLabels() {
       startSliders.forEach((slider, index) => {
         startValues[index].textContent = `${Math.round(Number(slider.value) / 10)}%`;
       });
+      syncTimeline();
     }
+
+    function syncTimeline() {
+      slots.forEach((slot, index) => {
+        const start = getStart(index);
+        const duration = slot.duration || 0;
+        const progress = duration ? (start / duration) * 100 : 0;
+        trackFills[index].style.width = `${clamp(progress, 0, 100)}%`;
+        timeEls[index].textContent = `${start.toFixed(1)}s`;
+      });
+    }
+
     function sanitizeCaption(value) {
       return Array.from(value).filter(char => /[A-Za-z0-9\u4e00-\u9fff ]/.test(char)).slice(0, 18).join('');
     }
+
     function syncCaptionCounts() {
       captionInputs.forEach((input, index) => {
         captionValues[index].textContent = `${Array.from(input.value).length}/18`;
       });
     }
+
     function coverDraw(source, x, y, w, h) {
       const sw = source.videoWidth || 1;
       const sh = source.videoHeight || 1;
@@ -576,6 +858,7 @@
       ctx.drawImage(source, x + (w - dw) / 2, y + (h - dh) / 2, dw, dh);
       ctx.restore();
     }
+
     function drawCaption(text, x, y, w, h) {
       if (!text) return;
       const fontSize = clamp(Math.round(h * 0.058), 24, 38);
@@ -596,19 +879,25 @@
       ctx.fillText(text, x + w / 2, baseline);
       ctx.restore();
     }
+
     function drawPlaceholder() {
       canvas.width = 1080;
       canvas.height = 1920;
-      ctx.fillStyle = '#fffefa';
+      ctx.fillStyle = '#fbfcfb';
       ctx.fillRect(0, 0, canvas.width, canvas.height);
-      ctx.fillStyle = '#161713';
+      ctx.fillStyle = '#e6ece8';
+      for (let index = 0; index < 3; index += 1) {
+        ctx.fillRect(0, index * 640, canvas.width, 638);
+      }
+      ctx.fillStyle = '#141816';
       ctx.textAlign = 'center';
       ctx.font = '760 54px system-ui, sans-serif';
-      ctx.fillText('选择 3 个 MOV 视频', canvas.width / 2, canvas.height / 2 - 28);
-      ctx.fillStyle = '#6e7169';
+      ctx.fillText('选择 3 个 MOV/MP4 视频', canvas.width / 2, canvas.height / 2 - 28);
+      ctx.fillStyle = '#67706b';
       ctx.font = '30px system-ui, sans-serif';
-      ctx.fillText('导出为可分享的 MP4', canvas.width / 2, canvas.height / 2 + 34);
+      ctx.fillText('生成可发布的竖版三拼 MP4', canvas.width / 2, canvas.height / 2 + 34);
     }
+
     function drawFrame() {
       canvas.width = 1080;
       canvas.height = 1920;
@@ -621,15 +910,16 @@
           coverDraw(slot.video, 0, y, canvas.width, frameH);
           drawCaption(captionInputs[index].value.trim(), 0, y, canvas.width, frameH);
         } else {
-          ctx.fillStyle = '#ebe6d8';
+          ctx.fillStyle = '#e6ece8';
           ctx.fillRect(0, y, canvas.width, frameH);
-          ctx.fillStyle = '#6e7169';
+          ctx.fillStyle = '#67706b';
           ctx.textAlign = 'center';
           ctx.font = '700 30px system-ui, sans-serif';
           ctx.fillText(`选择${labels[index]}方视频`, canvas.width / 2, y + frameH / 2 + 10);
         }
       });
     }
+
     function loopSegments() {
       if (!playing) return;
       slots.forEach((slot, index) => {
@@ -641,19 +931,31 @@
       drawFrame();
       rafId = requestAnimationFrame(loopSegments);
     }
+
     function seekVideo(video, time, duration) {
       return new Promise((resolve, reject) => {
-        const done = () => { video.removeEventListener('seeked', done); resolve(); };
-        const fail = () => { video.removeEventListener('error', fail); reject(new Error('视频读取失败')); };
+        const done = () => {
+          video.removeEventListener('seeked', done);
+          video.removeEventListener('error', fail);
+          resolve();
+        };
+        const fail = () => {
+          video.removeEventListener('seeked', done);
+          video.removeEventListener('error', fail);
+          reject(new Error('视频读取失败'));
+        };
         video.addEventListener('seeked', done, { once: true });
         video.addEventListener('error', fail, { once: true });
         video.currentTime = Math.min(Math.max(time, 0), Math.max(duration - 0.03, 0));
       });
     }
+
     async function resetSegments() {
       await Promise.all(slots.map((slot, index) => slot.video ? seekVideo(slot.video, getStart(index), slot.duration) : Promise.resolve()));
+      syncTimeline();
       drawFrame();
     }
+
     function pausePreview(message = '已暂停预览。') {
       playing = false;
       playBtn.textContent = '预览';
@@ -661,19 +963,23 @@
       slots.forEach(slot => { if (slot.video) slot.video.pause(); });
       setStatus(message);
     }
+
     async function startPreview() {
       if (!isReady()) {
         setStatus('先把上、中、下三个视频都选好。', 'error');
         return;
       }
       playing = true;
+      previewSeen = true;
       playBtn.textContent = '暂停';
       await resetSegments();
       await Promise.all(slots.map(slot => slot.video.play()));
       cancelAnimationFrame(rafId);
       loopSegments();
       setStatus('正在预览。', 'busy');
+      updateChecks();
     }
+
     async function loadFileIntoSlot(index, file) {
       if (!file) return;
       if (!file.type.startsWith('video/') && !/\.(mov|mp4|m4v)$/i.test(file.name)) {
@@ -689,6 +995,7 @@
       const oldSlot = slots[index];
       if (oldSlot.url) URL.revokeObjectURL(oldSlot.url);
       if (oldSlot.video) oldSlot.video.remove();
+
       const url = URL.createObjectURL(file);
       const video = document.createElement('video');
       video.src = url;
@@ -696,39 +1003,45 @@
       video.playsInline = true;
       video.preload = 'auto';
       document.body.appendChild(video);
+
       await new Promise((resolve, reject) => {
         video.onloadedmetadata = resolve;
-        video.onerror = reject;
+        video.onerror = () => reject(new Error('视频无法读取，请换一个文件试试。'));
         video.load();
       });
+
       if ((video.duration || 0) > MAX_VIDEO_SECONDS) {
         URL.revokeObjectURL(url);
         video.remove();
         setStatus(`${labels[index]}方视频太长：${video.duration.toFixed(1)} 秒，单个视频上限 ${MAX_VIDEO_SECONDS} 秒。`, 'error');
         return;
       }
+
       slots[index] = { file, url, video, duration: video.duration || 0 };
+      previewSeen = false;
       updateLoadHint();
       await resetSegments();
       setStatus(`已载入${labels[index]}方视频。`);
       if (wasPlaying && isReady()) startPreview();
     }
+
     async function loadMultiple(files) {
       const picked = Array.from(files).filter(file => file.type.startsWith('video/') || /\.(mov|mp4|m4v)$/i.test(file.name));
       if (picked.length < 3) {
-        setStatus('请一次选择至少 3 个 MOV/MP4。', 'error');
+        setStatus('请一次选择至少 3 个 MOV/MP4 视频。', 'error');
         return;
       }
       picked.sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: 'base' }));
       const selected = picked.slice(0, 3);
-      const totalBytes = selected.reduce((sum, file) => sum + file.size, 0);
-      if (totalBytes > MAX_TOTAL_BYTES) {
-        setStatus(`3 个视频合计 ${formatSize(totalBytes)}，总上限 ${MAX_TOTAL_MB}MB。`, 'error');
+      const bytes = selected.reduce((sum, file) => sum + file.size, 0);
+      if (bytes > MAX_TOTAL_BYTES) {
+        setStatus(`3 个视频合计 ${formatSize(bytes)}，总上限 ${MAX_TOTAL_MB}MB。`, 'error');
         return;
       }
-      for (let i = 0; i < 3; i += 1) await loadFileIntoSlot(i, picked[i]);
+      for (let i = 0; i < 3; i += 1) await loadFileIntoSlot(i, selected[i]);
       setStatus('三个视频已按文件名顺序放入上、中、下。');
     }
+
     async function exportMp4() {
       if (!isReady()) {
         setStatus('先把上、中、下三个视频都选好。', 'error');
@@ -738,6 +1051,7 @@
       pausePreview('正在上传并渲染 MP4...');
       setProcessing(true);
       setProgress(0, 'determinate');
+
       const form = new FormData();
       form.append('top', slots[0].file);
       form.append('middle', slots[1].file);
@@ -746,6 +1060,7 @@
       form.append('exportLength', String(getExportLength()));
       slots.forEach((slot, index) => form.append(`start${index}`, String(getStart(index))));
       captionInputs.forEach((input, index) => form.append(`caption${index}`, input.value.trim()));
+
       try {
         const blob = await new Promise((resolve, reject) => {
           const xhr = new XMLHttpRequest();
@@ -783,6 +1098,7 @@
           xhr.onerror = () => reject(new Error('网络连接失败，请重试。'));
           xhr.send(form);
         });
+
         const link = document.createElement('a');
         link.href = URL.createObjectURL(blob);
         link.download = `clip-trio-${Date.now()}.mp4`;
@@ -800,20 +1116,67 @@
     }
 
     multiFiles.addEventListener('change', event => loadMultiple(event.target.files).catch(error => setStatus(error.message, 'error')));
+    multiPickButton.addEventListener('click', () => multiFiles.click());
     fileInputs.forEach((input, index) => input.addEventListener('change', event => loadFileIntoSlot(index, event.target.files[0]).catch(error => setStatus(error.message, 'error'))));
-    startSliders.forEach(slider => slider.addEventListener('input', () => { syncLabels(); resetSegments().catch(() => {}); }));
+    startSliders.forEach(slider => slider.addEventListener('input', () => {
+      previewSeen = false;
+      syncLabels();
+      resetSegments().catch(() => {});
+      updateChecks();
+    }));
     captionInputs.forEach(input => input.addEventListener('input', () => {
       const cleaned = sanitizeCaption(input.value);
       if (input.value !== cleaned) input.value = cleaned;
+      previewSeen = false;
       syncCaptionCounts();
       drawFrame();
+      updateChecks();
     }));
     ['clipLength', 'exportLength'].forEach(id => document.getElementById(id).addEventListener('input', () => {
+      previewSeen = false;
       updateLoadHint();
       resetSegments().catch(() => drawFrame());
     }));
     playBtn.addEventListener('click', () => playing ? pausePreview() : startPreview().catch(error => setStatus(error.message, 'error')));
     downloadBtn.addEventListener('click', () => exportMp4());
+
+    function setDragState(element, isDragging) {
+      element.classList.toggle('dragging', isDragging);
+    }
+
+    ['dragenter', 'dragover'].forEach(eventName => {
+      dropZone.addEventListener(eventName, event => {
+        event.preventDefault();
+        setDragState(dropZone, true);
+      });
+      slotEls.forEach(slotEl => slotEl.addEventListener(eventName, event => {
+        event.preventDefault();
+        event.stopPropagation();
+        setDragState(slotEl, true);
+      }));
+    });
+    ['dragleave', 'drop'].forEach(eventName => {
+      dropZone.addEventListener(eventName, event => {
+        event.preventDefault();
+        setDragState(dropZone, false);
+      });
+      slotEls.forEach(slotEl => slotEl.addEventListener(eventName, event => {
+        event.preventDefault();
+        event.stopPropagation();
+        setDragState(slotEl, false);
+      }));
+    });
+    dropZone.addEventListener('drop', event => {
+      if (event.dataTransfer?.files?.length) {
+        loadMultiple(event.dataTransfer.files).catch(error => setStatus(error.message, 'error'));
+      }
+    });
+    slotEls.forEach((slotEl, index) => {
+      slotEl.addEventListener('drop', event => {
+        const file = event.dataTransfer?.files?.[0];
+        if (file) loadFileIntoSlot(index, file).catch(error => setStatus(error.message, 'error'));
+      });
+    });
 
     syncLabels();
     syncCaptionCounts();
