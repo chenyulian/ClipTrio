@@ -290,12 +290,93 @@
       cursor: pointer;
     }
 
-    .segment, .caption-row {
+    .clip-control {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 88px;
+      gap: 10px;
+      align-items: end;
+      margin-bottom: 12px;
+    }
+
+    .segment-list {
+      display: grid;
+      gap: 10px;
+    }
+
+    .segment-picker {
+      display: grid;
+      grid-template-columns: 38px minmax(0, 1fr);
+      gap: 10px;
+      align-items: center;
+    }
+
+    .segment-control {
+      position: relative;
+      min-width: 0;
+      display: grid;
+      gap: 6px;
+    }
+
+    .segment-time {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      gap: 10px;
+      color: var(--muted);
+      font-size: 12px;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .segment-time strong {
+      color: var(--ink);
+      font-size: 12px;
+    }
+
+    .segment-track {
+      position: relative;
+      height: 10px;
+      overflow: hidden;
+      border-radius: 999px;
+      background: #dde4df;
+    }
+
+    .segment-window {
+      position: absolute;
+      top: 0;
+      bottom: 0;
+      left: 0%;
+      width: 34%;
+      border-radius: inherit;
+      background: var(--accent);
+      box-shadow: 0 0 0 1px rgba(255,255,255,.45) inset;
+    }
+
+    .segment-control input[type="range"] {
+      position: absolute;
+      left: 0;
+      right: 0;
+      bottom: -4px;
+      height: 18px;
+      opacity: 0;
+      cursor: grab;
+    }
+
+    .segment-control input[type="range"]:active {
+      cursor: grabbing;
+    }
+
+    .caption-row {
       display: grid;
       grid-template-columns: 38px minmax(0, 1fr) 54px;
       gap: 10px;
       align-items: center;
       margin-top: 9px;
+    }
+
+    .export-settings {
+      display: grid;
+      gap: 6px;
+      margin-top: 12px;
     }
 
     .value {
@@ -562,12 +643,11 @@
       .row { grid-template-columns: 1fr; }
       h1 { font-size: 21px; }
       .section { padding: 14px 0; }
-      .drop { min-height: 104px; padding: 16px 12px; }
       .slot {
         grid-template-columns: 32px minmax(0, 1fr) 66px;
         gap: 8px;
       }
-      .segment, .caption-row {
+      .segment-picker, .caption-row {
         grid-template-columns: 32px minmax(0, 1fr) 48px;
         gap: 8px;
       }
@@ -601,10 +681,37 @@
         </div>
 
         <div class="section">
-          <div class="section-title">各视频起点 <span class="hint">按素材长度百分比定位</span></div>
-          <div class="segment"><span class="chip">上</span><input id="startA" type="range" min="0" max="1000" value="0"><span class="value" id="startAValue">0%</span></div>
-          <div class="segment"><span class="chip">中</span><input id="startB" type="range" min="0" max="1000" value="0"><span class="value" id="startBValue">0%</span></div>
-          <div class="segment"><span class="chip">下</span><input id="startC" type="range" min="0" max="1000" value="0"><span class="value" id="startCValue">0%</span></div>
+          <div class="section-title">片段选择 <span class="hint">拖动高亮片段选择截取位置</span></div>
+          <div class="clip-control">
+            <label class="stack"><span class="hint">片段长度 / 秒</span><input id="clipLength" type="number" min="0.3" max="8" step="0.1" value="3"></label>
+            <span class="value" id="clipLengthHint">循环 3.0s</span>
+          </div>
+          <div class="segment-list">
+            <div class="segment-picker">
+              <span class="chip">上</span>
+              <div class="segment-control">
+                <div class="segment-time"><strong id="startAValue">00:00.0</strong><span id="endAValue">00:03.0</span></div>
+                <div class="segment-track"><div class="segment-window" id="windowA"></div></div>
+                <input id="startA" type="range" min="0" max="1000" value="0" aria-label="上方片段起点">
+              </div>
+            </div>
+            <div class="segment-picker">
+              <span class="chip">中</span>
+              <div class="segment-control">
+                <div class="segment-time"><strong id="startBValue">00:00.0</strong><span id="endBValue">00:03.0</span></div>
+                <div class="segment-track"><div class="segment-window" id="windowB"></div></div>
+                <input id="startB" type="range" min="0" max="1000" value="0" aria-label="中间片段起点">
+              </div>
+            </div>
+            <div class="segment-picker">
+              <span class="chip">下</span>
+              <div class="segment-control">
+                <div class="segment-time"><strong id="startCValue">00:00.0</strong><span id="endCValue">00:03.0</span></div>
+                <div class="segment-track"><div class="segment-window" id="windowC"></div></div>
+                <input id="startC" type="range" min="0" max="1000" value="0" aria-label="下方片段起点">
+              </div>
+            </div>
+          </div>
         </div>
 
         <div class="section">
@@ -616,13 +723,6 @@
           </div>
         </div>
 
-        <div class="section">
-          <div class="section-title">动态参数</div>
-          <div class="row">
-            <label class="stack"><span class="hint">片段循环 / 秒</span><input id="clipLength" type="number" min="0.3" max="8" step="0.1" value="3"></label>
-            <label class="stack"><span class="hint">导出时长 / 秒</span><input id="exportLength" type="number" min="1" max="10" step="0.5" value="5"></label>
-          </div>
-        </div>
       </div>
     </aside>
 
@@ -662,6 +762,9 @@
           </div>
           <div class="actions">
             <button id="download" class="primary" type="button">导出 MP4</button>
+          </div>
+          <div class="export-settings">
+            <label class="stack"><span class="hint">成片时长 / 秒</span><input id="exportLength" type="number" min="1" max="10" step="0.5" value="5"></label>
           </div>
         </div>
 
@@ -703,6 +806,9 @@
     const slotEls = ['slotA', 'slotB', 'slotC'].map(id => document.getElementById(id));
     const startSliders = ['startA', 'startB', 'startC'].map(id => document.getElementById(id));
     const startValues = ['startAValue', 'startBValue', 'startCValue'].map(id => document.getElementById(id));
+    const endValues = ['endAValue', 'endBValue', 'endCValue'].map(id => document.getElementById(id));
+    const segmentWindows = ['windowA', 'windowB', 'windowC'].map(id => document.getElementById(id));
+    const clipLengthHint = document.getElementById('clipLengthHint');
     const captionInputs = ['captionA', 'captionB', 'captionC'].map(id => document.getElementById(id));
     const captionValues = ['captionAValue', 'captionBValue', 'captionCValue'].map(id => document.getElementById(id));
     const trackFills = ['trackA', 'trackB', 'trackC'].map(id => document.getElementById(id));
@@ -758,6 +864,13 @@
 
     function formatSize(bytes) {
       return `${(bytes / 1024 / 1024).toFixed(bytes > 10 * 1024 * 1024 ? 0 : 1)}MB`;
+    }
+
+    function formatTime(seconds) {
+      const safe = Math.max(0, Number(seconds) || 0);
+      const minutes = Math.floor(safe / 60);
+      const remaining = (safe - minutes * 60).toFixed(1).padStart(4, '0');
+      return `${String(minutes).padStart(2, '0')}:${remaining}`;
     }
 
     function formatVideoMeta(video) {
@@ -820,8 +933,12 @@
 
     function syncLabels() {
       startSliders.forEach((slider, index) => {
-        startValues[index].textContent = `${Math.round(Number(slider.value) / 10)}%`;
+        const start = getStart(index);
+        const end = Math.min(slots[index].duration || getClipLength(), start + getClipLength());
+        startValues[index].textContent = formatTime(start);
+        endValues[index].textContent = formatTime(end);
       });
+      clipLengthHint.textContent = `循环 ${getClipLength().toFixed(1)}s`;
       syncTimeline();
     }
 
@@ -830,7 +947,10 @@
         const start = getStart(index);
         const duration = slot.duration || 0;
         const progress = duration ? (start / duration) * 100 : 0;
+        const width = duration ? (Math.min(getClipLength(), duration) / duration) * 100 : 34;
         trackFills[index].style.width = `${clamp(progress, 0, 100)}%`;
+        segmentWindows[index].style.left = `${clamp(progress, 0, 100)}%`;
+        segmentWindows[index].style.width = `${clamp(width, 3, 100)}%`;
         timeEls[index].textContent = `${start.toFixed(1)}s`;
       });
     }
