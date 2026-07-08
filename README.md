@@ -1,4 +1,4 @@
-# Live Triptych
+# ClipTrio
 
 把 3 个 iPhone Live Photo 导出的 MOV/MP4 拼成可发小红书/抖音的竖版 MP4。
 

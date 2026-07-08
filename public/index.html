@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Live Triptych</title>
+  <title>ClipTrio</title>
   <style>
     :root {
       --bg: #f4f1e8;
@@ -395,7 +395,7 @@
   <div class="shell">
     <aside>
       <div class="brand">
-        <h1>Live Triptych<br>动态三视频拼接</h1>
+        <h1>ClipTrio<br>动态三视频拼接</h1>
         <div class="mark">MP4</div>
       </div>
 
@@ -785,7 +785,7 @@
         });
         const link = document.createElement('a');
         link.href = URL.createObjectURL(blob);
-        link.download = `live-triptych-${Date.now()}.mp4`;
+        link.download = `clip-trio-${Date.now()}.mp4`;
         link.click();
         setTimeout(() => URL.revokeObjectURL(link.href), 1500);
         setStatus('MP4 导出完成。', 'success');

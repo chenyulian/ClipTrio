@@ -1,5 +1,6 @@
+name: clip-trio
 services:
-  live-triptych:
+  clip-trio:
     build: .
     ports:
       - "3000:3000"

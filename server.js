@@ -326,7 +326,7 @@ async function handleRender(req, res) {
     res.writeHead(200, {
       'content-type': 'video/mp4',
       'content-length': stat.size,
-      'content-disposition': `attachment; filename="live-triptych-${Date.now()}.mp4"`,
+      'content-disposition': `attachment; filename="clip-trio-${Date.now()}.mp4"`,
       'cache-control': 'no-store'
     });
     fs.createReadStream(outputPath).pipe(res);
@@ -380,5 +380,5 @@ const server = http.createServer((req, res) => {
 });
 
 server.listen(port, () => {
-  console.log(`Live Triptych running at http://localhost:${port}`);
+  console.log(`ClipTrio running at http://localhost:${port}`);
 });
