@@ -6,157 +6,161 @@
   <title>ClipTrio</title>
   <style>
     :root {
-      --bg: #eef0ee;
-      --surface: #fbfcfb;
-      --surface-2: #f5f7f5;
-      --ink: #141816;
-      --muted: #67706b;
-      --soft: #8a928d;
-      --line: #d8ded9;
-      --line-strong: #c4ccc6;
-      --accent: #17735f;
-      --accent-dark: #105644;
-      --accent-soft: #dceee9;
-      --danger: #b42318;
-      --warning: #9a6700;
-      --shadow: 0 22px 55px rgba(18, 28, 24, .12);
+      --bg: #faf8fb;
+      --surface: #fffefd;
+      --surface-2: #faf8f7;
+      --surface-3: #f2efed;
+      --ink: #201d1b;
+      --muted: #6f6864;
+      --soft: #9a928d;
+      --line: #e8e2de;
+      --line-strong: #d8d0cb;
+      --accent: #b4a1ff;
+      --accent-dark: #5b49b8;
+      --accent-soft: #f0ecff;
+      --danger: #c7423d;
+      --warning: #9d671d;
+      --shadow: 0 20px 50px rgba(48, 39, 68, .12);
     }
 
     * { box-sizing: border-box; }
 
     body {
       margin: 0;
-      min-height: 100vh;
+      min-height: 100dvh;
+      overflow: hidden;
       background: var(--bg);
       color: var(--ink);
-      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      font-family: "Segoe UI Variable", "Segoe UI", ui-sans-serif, system-ui, -apple-system, sans-serif;
       letter-spacing: 0;
-      overflow: hidden;
     }
 
     button, input { font: inherit; }
 
     button {
-      min-height: 38px;
+      min-height: 34px;
       border: 1px solid var(--line-strong);
       border-radius: 7px;
       background: var(--surface);
       color: var(--ink);
-      padding: 0 12px;
+      padding: 0 11px;
       cursor: pointer;
       transition: background .16s ease, border-color .16s ease, color .16s ease, transform .16s ease;
       touch-action: manipulation;
     }
 
     button:hover:not(:disabled) {
-      border-color: #9da8a1;
-      background: #fff;
+      border-color: #bcb0aa;
+      background: #fffefd;
     }
 
     button:active:not(:disabled) { transform: translateY(1px); }
-    button:disabled { opacity: .55; cursor: not-allowed; }
+    button:disabled { opacity: .46; cursor: not-allowed; }
 
     button.primary {
-      background: var(--accent);
-      border-color: var(--accent);
-      color: #fff;
-      font-weight: 760;
+      background: var(--ink);
+      border-color: var(--ink);
+      color: #f8fdff;
+      font-weight: 720;
     }
 
     button.primary:hover:not(:disabled) {
-      background: var(--accent-dark);
-      border-color: var(--accent-dark);
+      background: #37312e;
+      border-color: #37312e;
     }
 
     input[type="text"], input[type="number"] {
       width: 100%;
-      height: 38px;
+      height: 34px;
       min-width: 0;
       border: 1px solid var(--line-strong);
       border-radius: 7px;
       background: var(--surface);
       color: var(--ink);
-      padding: 0 10px;
+      padding: 0 9px;
       outline: none;
     }
 
     input[type="text"]:focus, input[type="number"]:focus {
       border-color: var(--accent);
-      box-shadow: 0 0 0 3px rgba(23, 115, 95, .14);
+      box-shadow: 0 0 0 3px rgba(180, 161, 255, .22);
     }
 
-    input[type="range"] {
-      width: 100%;
-      accent-color: var(--accent);
-    }
+    input[type="range"] { width: 100%; accent-color: var(--accent); }
 
-    .shell {
-      height: 100vh;
-      display: grid;
-      grid-template-columns: 380px minmax(480px, 1fr) 340px;
-      gap: 0;
-    }
-
-    .panel {
-      min-width: 0;
-      height: 100vh;
-      background: rgba(251, 252, 251, .78);
-      backdrop-filter: blur(14px);
-    }
-
-    .left-panel {
-      border-right: 1px solid var(--line);
-      overflow: auto;
-    }
-
-    .right-panel {
-      border-left: 1px solid var(--line);
-      overflow: auto;
-    }
-
-    .panel-inner {
-      padding: 22px;
+    .app-header {
+      height: 52px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 20px;
+      padding: 0 16px;
+      border-bottom: 1px solid var(--line);
+      background: rgba(255,254,253,.96);
     }
 
     .brand {
       display: flex;
       align-items: center;
-      justify-content: space-between;
-      gap: 14px;
-      margin-bottom: 20px;
+      gap: 10px;
+      min-width: 0;
+    }
+
+    .brand-mark {
+      width: 28px;
+      height: 28px;
+      display: grid;
+      place-items: center;
+      border-radius: 7px;
+      background: var(--ink);
+      color: #f8fdff;
+      font-size: 14px;
+      font-weight: 800;
+      box-shadow: inset 0 0 0 1px rgba(255,255,255,.16);
     }
 
     h1 {
       margin: 0;
-      font-size: 23px;
-      line-height: 1.08;
-      letter-spacing: 0;
+      font-size: 16px;
+      line-height: 1;
+      font-weight: 760;
     }
 
     .subtitle {
-      display: block;
-      margin-top: 5px;
       color: var(--muted);
       font-size: 12px;
-      font-weight: 560;
+      white-space: nowrap;
     }
 
-    .mark {
-      flex: 0 0 auto;
-      border: 1px solid var(--ink);
-      border-radius: 7px;
-      padding: 5px 7px 4px;
+    .header-status {
+      color: var(--muted);
       font-size: 12px;
-      line-height: 1;
-      font-weight: 850;
+      font-variant-numeric: tabular-nums;
     }
+
+    .shell {
+      height: calc(100dvh - 52px);
+      display: grid;
+      grid-template-columns: 360px minmax(520px, 1fr) 332px;
+    }
+
+    .panel {
+      min-width: 0;
+      height: 100%;
+      overflow: auto;
+      background: var(--surface);
+    }
+
+    .left-panel { border-right: 1px solid var(--line); }
+    .right-panel { border-left: 1px solid var(--line); }
+    .panel-inner { padding: 0 14px 24px; }
 
     .section {
       border-top: 1px solid var(--line);
-      padding: 17px 0;
+      padding: 16px 0;
     }
 
-    .section:first-of-type { border-top: 0; }
+    .section:first-child { border-top: 0; }
 
     .section-title, .label {
       display: flex;
@@ -164,44 +168,35 @@
       align-items: baseline;
       gap: 10px;
       margin-bottom: 10px;
-      font-size: 13px;
-      font-weight: 780;
+      color: #3a3431;
+      font-size: 12px;
+      font-weight: 760;
     }
 
     .hint, .status, .note, .meta, .slot-detail {
       color: var(--muted);
-      font-size: 12px;
+      font-size: 11px;
       line-height: 1.45;
     }
 
     .source-panel {
       position: relative;
       display: grid;
-      gap: 10px;
-      border: 1.5px dashed #98a39b;
-      border-radius: 8px;
-      background: var(--surface-2);
-      padding: 10px;
+      gap: 9px;
       color: var(--muted);
-      transition: border-color .16s ease, background .16s ease, box-shadow .16s ease;
     }
 
-    .source-panel.dragging,
-    .slot.dragging {
-      border-color: var(--accent);
+    .source-panel.dragging {
+      outline: 2px solid var(--accent);
+      outline-offset: 5px;
+      border-radius: 8px;
       background: var(--accent-soft);
-      box-shadow: inset 0 0 0 1px rgba(23, 115, 95, .25);
     }
 
-    .source-actions {
-      display: grid;
-      grid-template-columns: 1fr;
-      gap: 8px;
-    }
+    .source-actions { display: grid; gap: 7px; }
 
     .batch-pick {
       position: absolute;
-      inset: auto;
       width: 1px;
       height: 1px;
       opacity: 0;
@@ -210,51 +205,61 @@
 
     .source-button {
       width: 100%;
-      min-height: 40px;
-      border-style: dashed;
+      min-height: 38px;
+      border-color: #cfc4f6;
+      border-style: solid;
       color: var(--accent-dark);
-      font-weight: 720;
+      background: var(--accent-soft);
+      font-size: 12px;
+      font-weight: 700;
     }
 
     .source-caption {
-      color: var(--muted);
-      font-size: 12px;
-      line-height: 1.4;
+      color: var(--soft);
+      font-size: 11px;
+      line-height: 1.35;
       text-align: center;
     }
 
-    .slots, .caption-grid { display: grid; gap: 9px; }
+    .slots, .caption-grid { display: grid; gap: 7px; }
 
     .slot {
       position: relative;
       display: grid;
-      grid-template-columns: 38px minmax(0, 1fr) 72px;
-      gap: 10px;
+      grid-template-columns: 34px minmax(0, 1fr) 62px;
+      gap: 9px;
       align-items: center;
+      min-height: 58px;
       border: 1px solid var(--line);
-      background: var(--surface-2);
+      background: var(--surface);
       border-radius: 8px;
-      padding: 8px;
+      padding: 7px;
+      transition: border-color .16s ease, background .16s ease, box-shadow .16s ease;
     }
 
     .slot.ready {
-      border-color: rgba(23, 115, 95, .42);
-      background: #f6fbf9;
+      border-color: #b9a9f4;
+      background: #fbf9ff;
+      box-shadow: inset 3px 0 0 var(--accent);
     }
 
-    .slot:hover {
-      border-color: #b7c2ba;
-    }
+    .slot:hover { border-color: #bdb2ad; }
+    .slot.dragging { border-color: var(--accent); background: var(--accent-soft); }
 
     .chip {
-      height: 30px;
-      border: 1px solid var(--line-strong);
-      border-radius: 7px;
+      height: 28px;
       display: grid;
       place-items: center;
-      background: var(--surface);
-      font-size: 12px;
-      font-weight: 820;
+      border-radius: 6px;
+      background: var(--surface-3);
+      color: #665f5b;
+      font-size: 11px;
+      font-weight: 780;
+    }
+
+    .slot.ready .chip {
+      background: var(--accent);
+      color: #2d2451;
     }
 
     .slot-text { min-width: 0; }
@@ -263,7 +268,7 @@
       min-width: 0;
       color: var(--ink);
       font-size: 12px;
-      font-weight: 660;
+      font-weight: 650;
       white-space: nowrap;
       overflow: hidden;
       text-overflow: ellipsis;
@@ -279,8 +284,10 @@
     .pick {
       position: relative;
       overflow: hidden;
-      min-width: 68px;
-      padding: 0 8px;
+      min-width: 58px;
+      min-height: 30px;
+      padding: 0 7px;
+      font-size: 11px;
     }
 
     .pick input {
@@ -292,21 +299,18 @@
 
     .clip-control {
       display: grid;
-      grid-template-columns: minmax(0, 1fr) 88px;
-      gap: 10px;
+      grid-template-columns: minmax(0, 1fr) 78px;
+      gap: 9px;
       align-items: end;
       margin-bottom: 12px;
     }
 
-    .segment-list {
-      display: grid;
-      gap: 10px;
-    }
+    .segment-list { display: grid; gap: 12px; }
 
     .segment-picker {
       display: grid;
-      grid-template-columns: 38px minmax(0, 1fr);
-      gap: 10px;
+      grid-template-columns: 34px minmax(0, 1fr);
+      gap: 9px;
       align-items: center;
     }
 
@@ -323,124 +327,99 @@
       justify-content: space-between;
       gap: 10px;
       color: var(--muted);
-      font-size: 12px;
+      font-size: 11px;
       font-variant-numeric: tabular-nums;
     }
 
-    .segment-time strong {
-      color: var(--ink);
-      font-size: 12px;
-    }
+    .segment-time strong { color: var(--ink); font-size: 11px; }
 
     .segment-track {
       position: relative;
-      height: 10px;
+      height: 30px;
       overflow: hidden;
-      border-radius: 999px;
-      background: #dde4df;
+      border-radius: 6px;
+      background-color: #e7e2df;
+      background-image: repeating-linear-gradient(90deg, rgba(255,255,255,.44) 0 1px, transparent 1px 34px);
+      box-shadow: inset 0 0 0 1px rgba(91, 74, 67, .08);
     }
 
     .segment-window {
       position: absolute;
-      top: 0;
-      bottom: 0;
+      inset-block: 0;
       left: 0%;
       width: 34%;
-      border-radius: inherit;
-      background: var(--accent);
-      box-shadow: 0 0 0 1px rgba(255,255,255,.45) inset;
+      min-width: 18px;
+      background: rgba(180, 161, 255, .62);
+      border: 2px solid var(--accent);
+      box-shadow: 0 0 0 999px rgba(43, 36, 33, .14);
     }
+
+    .segment-window::before,
+    .segment-window::after {
+      content: "";
+      position: absolute;
+      top: 7px;
+      width: 3px;
+      height: 12px;
+      border-radius: 2px;
+      background: #fefefe;
+    }
+
+    .segment-window::before { left: 3px; }
+    .segment-window::after { right: 3px; }
 
     .segment-control input[type="range"] {
       position: absolute;
-      left: 0;
-      right: 0;
-      bottom: -4px;
-      height: 18px;
+      inset: 19px 0 -3px;
+      height: 32px;
       opacity: 0;
       cursor: grab;
     }
 
-    .segment-control input[type="range"]:active {
-      cursor: grabbing;
-    }
+    .segment-control input[type="range"]:active { cursor: grabbing; }
 
     .caption-row {
       display: grid;
-      grid-template-columns: 38px minmax(0, 1fr) 54px;
-      gap: 10px;
+      grid-template-columns: 34px minmax(0, 1fr) 42px;
+      gap: 9px;
       align-items: center;
-      margin-top: 9px;
     }
 
-    .export-settings {
-      display: grid;
-      gap: 6px;
-      margin-top: 12px;
-    }
+    .export-settings { display: grid; gap: 10px; }
 
     .value {
       color: var(--muted);
-      font-size: 12px;
+      font-size: 11px;
       text-align: right;
       font-variant-numeric: tabular-nums;
     }
 
-    .row {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 10px;
-    }
-
-    label.stack {
-      display: grid;
-      gap: 6px;
-    }
+    label.stack { display: grid; gap: 6px; }
 
     .stage {
       min-width: 0;
-      height: 100vh;
-      padding: 22px 26px;
+      height: 100%;
       display: grid;
-      grid-template-rows: auto minmax(0, 1fr);
-      gap: 14px;
-    }
-
-    .topbar {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 16px;
-    }
-
-    .topbar-title {
-      display: grid;
-      gap: 4px;
-    }
-
-    .topbar-title strong {
-      font-size: 14px;
-    }
-
-    .preview-actions {
-      display: flex;
-      align-items: center;
-      gap: 8px;
+      grid-template-rows: minmax(0, 1fr) 58px;
+      overflow: hidden;
+      background: #faf8fb;
     }
 
     .preview-shell {
       min-height: 0;
       display: grid;
       place-items: center;
-      padding: 8px;
+      padding: 18px 24px 10px;
     }
 
     .preview-frame {
-      height: min(74vh, 760px);
+      height: min(76vh, 710px);
+      max-height: calc(100dvh - 138px);
       aspect-ratio: 9 / 16;
-      display: grid;
-      place-items: center;
-      background: #111;
+      overflow: hidden;
+      border: 1px solid #d8d0cb;
+      border-radius: 8px;
+      background: #fefefe;
       box-shadow: var(--shadow);
     }
 
@@ -448,77 +427,190 @@
       width: 100%;
       height: 100%;
       display: block;
-      background: #fff;
+      background: #fefefe;
     }
 
     video { display: none; }
 
-    .facts {
+    .transport {
+      width: min(580px, calc(100% - 40px));
+      align-self: start;
+      justify-self: center;
       display: grid;
-      grid-template-columns: 1fr;
-      gap: 9px;
+      grid-template-columns: 38px 106px minmax(120px, 1fr) 72px;
+      align-items: center;
+      gap: 10px;
     }
 
-    .fact {
+    .play-button {
+      width: 38px;
+      min-height: 38px;
+      padding: 0;
+      border-color: var(--ink);
+      background: var(--ink);
+      color: #fffaf7;
+      font-size: 13px;
+    }
+
+    .play-time {
+      color: #514a46;
+      font-size: 11px;
+      font-variant-numeric: tabular-nums;
+      white-space: nowrap;
+    }
+
+    .preview-range { margin: 0; }
+
+    .transport-meta {
+      color: var(--soft);
+      font-size: 10px;
+      text-align: right;
+      white-space: nowrap;
+    }
+
+    .inspector-heading {
+      padding: 16px 0 12px;
+      color: #3a3431;
+      font-size: 12px;
+      font-weight: 760;
+    }
+
+    .setting-row {
+      display: grid;
+      grid-template-columns: 84px minmax(0, 1fr);
+      align-items: center;
+      gap: 10px;
+    }
+
+    .setting-row + .setting-row { margin-top: 9px; }
+
+    .setting-row > span {
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .fixed-control, .segmented {
+      min-height: 34px;
+      display: grid;
+      align-items: center;
+      border: 1px solid var(--line);
+      border-radius: 7px;
+      background: var(--surface-2);
+      color: var(--ink);
+      font-size: 11px;
+    }
+
+    .fixed-control { padding: 0 10px; }
+
+    .segmented {
+      grid-template-columns: repeat(2, 1fr);
+      padding: 2px;
+    }
+
+    .segmented span {
+      min-height: 28px;
+      display: grid;
+      place-items: center;
+      border-radius: 5px;
+      color: var(--soft);
+    }
+
+    .segmented span.active {
+      background: var(--accent-soft);
+      color: var(--accent-dark);
+      font-weight: 700;
+      box-shadow: 0 1px 3px rgba(70, 53, 117, .10);
+    }
+
+    .mode-switch {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 3px;
+      padding: 3px;
       border: 1px solid var(--line);
       border-radius: 8px;
       background: var(--surface-2);
-      padding: 10px 11px;
-      min-width: 0;
     }
 
+    .mode-option {
+      min-height: 30px;
+      border: 0;
+      background: transparent;
+      color: var(--muted);
+      font-size: 11px;
+      padding: 0 6px;
+    }
+
+    .mode-option.active {
+      background: var(--accent-soft);
+      color: var(--accent-dark);
+      font-weight: 700;
+      box-shadow: 0 1px 3px rgba(70, 53, 117, .10);
+    }
+
+    .mode-dependent.hidden { display: none; }
+
+    .facts { display: grid; gap: 0; }
+
+    .fact {
+      display: grid;
+      grid-template-columns: 80px minmax(0, 1fr);
+      gap: 10px;
+      padding: 8px 0;
+      min-width: 0;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .fact:last-child { border-bottom: 0; }
+
     .fact strong {
-      display: block;
       color: var(--ink);
-      font-size: 14px;
-      line-height: 1.2;
+      font-size: 12px;
+      line-height: 1.35;
       white-space: nowrap;
       overflow: hidden;
       text-overflow: ellipsis;
     }
 
     .fact span {
-      display: block;
-      margin-top: 3px;
       color: var(--muted);
-      font-size: 12px;
+      font-size: 11px;
       line-height: 1.35;
+      text-align: right;
     }
 
-    .actions {
-      display: grid;
-      grid-template-columns: 1fr;
-      gap: 10px;
-      margin-top: 12px;
-    }
+    .actions { display: grid; gap: 9px; margin-top: 12px; }
+    .actions button { min-height: 42px; }
 
-    .actions button {
-      min-height: 44px;
+    .export-section {
+      position: sticky;
+      bottom: 0;
+      margin-inline: -14px;
+      padding: 13px 14px 14px;
+      border-top: 1px solid var(--line);
+      background: rgba(255,254,253,.97);
+      box-shadow: 0 -10px 24px rgba(54, 43, 38, .06);
     }
 
     .status-panel {
       border: 1px solid var(--line);
-      border-radius: 8px;
+      border-radius: 7px;
       background: var(--surface-2);
-      padding: 12px;
+      padding: 10px;
     }
 
-    .status {
-      min-height: 20px;
-      color: var(--muted);
-    }
-
+    .status { min-height: 18px; color: var(--muted); }
     .status.error { color: var(--danger); }
     .status.success { color: var(--accent-dark); }
     .status.busy { color: var(--ink); }
 
     .progress {
       display: none;
-      margin-top: 10px;
-      height: 8px;
+      margin-top: 9px;
+      height: 6px;
       overflow: hidden;
-      border-radius: 999px;
-      background: rgba(23, 115, 95, .14);
+      border-radius: 5px;
+      background: #e9e3ff;
     }
 
     .progress.show { display: block; }
@@ -536,23 +628,20 @@
       animation: progressSlide 1.15s ease-in-out infinite;
     }
 
-    .checklist {
-      display: grid;
-      gap: 8px;
-      margin-top: 12px;
-    }
+    .checklist { display: grid; gap: 8px; margin-top: 12px; }
 
     .check {
       display: flex;
       align-items: center;
       gap: 8px;
       color: var(--muted);
-      font-size: 12px;
+      font-size: 11px;
     }
 
     .dot {
-      width: 8px;
-      height: 8px;
+      width: 7px;
+      height: 7px;
+      flex: 0 0 auto;
       border-radius: 50%;
       background: var(--line-strong);
     }
@@ -566,71 +655,48 @@
       100% { transform: translateX(260%); }
     }
 
-    @media (max-width: 1120px) {
-      .shell {
-        grid-template-columns: 360px minmax(420px, 1fr);
-      }
-
-      .right-panel {
-        grid-column: 1 / -1;
-        border-left: 0;
-        border-top: 1px solid var(--line);
-      }
-
-      .right-panel .panel-inner {
-        display: grid;
-        grid-template-columns: 1fr 1fr;
-        gap: 16px;
-      }
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after { scroll-behavior: auto !important; animation-duration: .01ms !important; transition-duration: .01ms !important; }
     }
 
-    @media (max-width: 860px) {
+    @media (max-width: 1180px) {
+      .shell { grid-template-columns: 340px minmax(460px, 1fr) 300px; }
+    }
+
+    @media (max-width: 980px) {
       body { overflow: auto; }
-      .shell { display: block; }
-      .panel, .shell, .stage { height: auto; }
-      .left-panel, .right-panel { border: 0; overflow: visible; }
-      .stage {
-        padding: 18px 14px;
-      }
-      .preview-frame {
-        height: auto;
-        width: min(100%, 330px);
-      }
-      .right-panel .panel-inner {
-        display: block;
-      }
-      .topbar {
-        align-items: flex-start;
-        flex-direction: column;
-      }
+      .shell { height: auto; grid-template-columns: 340px minmax(420px, 1fr); }
+      .panel, .stage { height: auto; overflow: visible; }
+      .right-panel { grid-column: 1 / -1; border-left: 0; border-top: 1px solid var(--line); }
+      .right-panel .panel-inner { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
+      .stage { min-height: 720px; }
     }
 
-    @media (max-width: 520px) {
-      .panel-inner { padding: 16px; }
-      .row { grid-template-columns: 1fr; }
-      h1 { font-size: 21px; }
-      .section { padding: 14px 0; }
-      .slot {
-        grid-template-columns: 32px minmax(0, 1fr) 66px;
-        gap: 8px;
-      }
-      .segment-picker, .caption-row {
-        grid-template-columns: 32px minmax(0, 1fr) 48px;
-        gap: 8px;
-      }
-      .chip { height: 28px; }
+    @media (max-width: 760px) {
+      .app-header { position: sticky; top: 0; z-index: 2; }
+      .header-status, .subtitle { display: none; }
+      .shell { display: block; }
+      .left-panel, .right-panel { border: 0; }
+      .stage { min-height: 680px; border-block: 1px solid var(--line); }
+      .preview-frame { width: min(100%, 330px); height: auto; max-height: none; }
+      .right-panel .panel-inner { display: block; }
+      .transport { grid-template-columns: 38px 94px minmax(80px, 1fr); }
+      .transport-meta { display: none; }
     }
   </style>
 </head>
 <body>
+  <header class="app-header">
+    <div class="brand">
+      <div class="brand-mark">C</div>
+      <h1>ClipTrio</h1>
+      <span class="subtitle">三分屏视频编辑器</span>
+    </div>
+    <div class="header-status" id="topLoadHint">0 / 3 素材 · 待选择</div>
+  </header>
   <div class="shell">
     <aside class="panel left-panel">
       <div class="panel-inner">
-        <div class="brand">
-          <h1>ClipTrio<span class="subtitle">动态三视频拼接工作台</span></h1>
-          <div class="mark">MP4</div>
-        </div>
-
         <div class="section">
           <div class="section-title">素材 <span class="hint" id="loadHint">0 / 3</span></div>
           <div class="source-panel" id="dropZone">
@@ -641,16 +707,16 @@
               <div class="slot" id="slotC" data-slot="2"><span class="chip">下</span><div class="slot-text"><div class="name" id="nameC">未选择</div><div class="slot-detail" id="detailC">拖入或选择视频</div></div><button class="pick" type="button">选择<input id="fileC" type="file" accept="video/*,.mov,.mp4,.m4v"></button></div>
             </div>
             <div class="source-actions">
-              <button class="source-button" id="multiPickButton" type="button">选择 3 个视频</button>
-              <div class="source-caption">也可以把 3 个文件拖到这里，或把单个文件拖到对应槽位。</div>
+              <button class="source-button" id="multiPickButton" type="button">＋ 添加 3 个视频</button>
+              <div class="source-caption">拖入 3 个文件，或在对应槽位单独替换</div>
             </div>
           </div>
         </div>
 
         <div class="section">
-          <div class="section-title">片段选择 <span class="hint">拖动高亮片段选择截取位置</span></div>
+          <div class="section-title">片段选择 <span class="hint">拖动选区定位</span></div>
           <div class="clip-control">
-            <label class="stack"><span class="hint">片段长度 / 秒</span><input id="clipLength" type="number" min="0.3" max="8" step="0.1" value="3"></label>
+            <label class="stack"><span class="hint">单次循环长度</span><input id="clipLength" type="number" min="0.3" max="8" step="0.1" value="3"></label>
             <span class="value" id="clipLengthHint">循环 3.0s</span>
           </div>
           <div class="segment-list">
@@ -682,7 +748,7 @@
         </div>
 
         <div class="section">
-          <div class="section-title">字幕水印 <span class="hint">中文、英文、数字，最多 18 字</span></div>
+          <div class="section-title">字幕水印 <span class="hint">每层最多 18 字</span></div>
           <div class="caption-grid">
             <div class="caption-row"><span class="chip">上</span><input id="captionA" type="text" maxlength="18" placeholder="上方字幕，可留空"><span class="value" id="captionAValue">0/18</span></div>
             <div class="caption-row"><span class="chip">中</span><input id="captionB" type="text" maxlength="18" placeholder="中间字幕，可留空"><span class="value" id="captionBValue">0/18</span></div>
@@ -694,26 +760,73 @@
     </aside>
 
     <main class="stage">
-      <div class="topbar">
-        <div class="topbar-title">
-          <strong>成片预览</strong>
-          <span class="hint">1080 x 1920，三段等高，导出为 H.264 MP4。</span>
-        </div>
-        <div class="preview-actions">
-          <button id="play" type="button">预览</button>
-        </div>
-      </div>
-
       <div class="preview-shell">
         <div class="preview-frame">
           <canvas id="canvas" width="1080" height="1920"></canvas>
         </div>
       </div>
+      <div class="transport">
+        <button class="play-button" id="play" type="button" aria-label="播放预览" title="播放预览">▶</button>
+        <span class="play-time" id="playTime">00:00.0 / 00:03.0</span>
+        <input class="preview-range" id="previewProgress" type="range" min="0" max="1000" value="0" aria-label="预览播放进度">
+        <span class="transport-meta">1080 × 1920</span>
+      </div>
     </main>
 
     <aside class="panel right-panel">
       <div class="panel-inner">
-        <div>
+        <div class="inspector-block">
+          <div class="inspector-heading">导出设置</div>
+          <div class="export-settings">
+            <div class="setting-row">
+              <span>导出模式</span>
+              <div class="mode-switch" role="group" aria-label="导出模式">
+                <button class="mode-option active" id="exportModeVideo" type="button" aria-pressed="true">视频 MP4</button>
+                <button class="mode-option" id="exportModeImage" type="button" aria-pressed="false">三拼图片</button>
+              </div>
+            </div>
+            <div class="setting-row mode-dependent" id="exportLengthRow">
+              <span>成片时长</span>
+              <input id="exportLength" type="number" min="1" max="10" step="0.5" value="5">
+            </div>
+            <div class="setting-row">
+              <span>画面布局</span>
+              <div class="fixed-control">三段等高</div>
+            </div>
+            <div class="setting-row">
+              <span>分辨率</span>
+              <div class="segmented"><span class="active">1080p</span><span>720p</span></div>
+            </div>
+            <div class="setting-row mode-dependent" id="frameRateRow">
+              <span>帧率</span>
+              <div class="segmented"><span class="active">30fps</span><span>60fps</span></div>
+            </div>
+            <div class="setting-row">
+              <span>编码</span>
+              <div class="fixed-control" id="codecValue">H.264 MP4</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="section">
+          <div class="section-title">导出检查</div>
+          <div class="checklist">
+            <div class="check" id="checkFiles"><span class="dot"></span><span>3 个素材已就绪</span></div>
+            <div class="check" id="checkDuration"><span class="dot"></span><span>时长与体积符合限制</span></div>
+            <div class="check" id="checkPreview"><span class="dot"></span><span>预览确认后可导出</span></div>
+          </div>
+        </div>
+
+        <div class="section">
+          <div class="section-title">文件与输出</div>
+          <div class="facts">
+            <div class="fact"><strong id="factSource">0/3 视频</strong><span>素材状态</span></div>
+            <div class="fact"><strong id="factOutput">5 秒 MP4</strong><span id="factOutputMeta">1080 × 1920 / 30fps</span></div>
+            <div class="fact"><strong id="factLimit">≤ 120MB</strong><span>总量上限 380MB</span></div>
+          </div>
+        </div>
+
+        <div class="section export-section">
           <div class="section-title">导出状态</div>
           <div class="status-panel" aria-live="polite">
             <div class="status" id="status">选择 3 个视频开始制作。</div>
@@ -722,24 +835,7 @@
             </div>
           </div>
           <div class="actions">
-            <button id="download" class="primary" type="button">导出 MP4</button>
-          </div>
-          <div class="export-settings">
-            <label class="stack"><span class="hint">成片时长 / 秒</span><input id="exportLength" type="number" min="1" max="10" step="0.5" value="5"></label>
-          </div>
-        </div>
-
-        <div>
-          <div class="section-title">文件与输出</div>
-          <div class="facts">
-            <div class="fact"><strong id="factSource">0/3 视频</strong><span>素材状态</span></div>
-            <div class="fact"><strong id="factOutput">5 秒 MP4</strong><span>H.264 / 1080 x 1920 / 30fps</span></div>
-            <div class="fact"><strong id="factLimit">≤ 120MB</strong><span>单个 ≤ 30 秒，总量 ≤ 380MB</span></div>
-          </div>
-          <div class="checklist">
-            <div class="check" id="checkFiles"><span class="dot"></span><span>3 个素材已就绪</span></div>
-            <div class="check" id="checkDuration"><span class="dot"></span><span>时长与体积符合限制</span></div>
-            <div class="check" id="checkPreview"><span class="dot"></span><span>预览确认后可导出</span></div>
+            <button id="download" class="primary" type="button">↓ 导出视频</button>
           </div>
         </div>
       </div>
@@ -754,12 +850,21 @@
     const progressBar = document.getElementById('progressBar');
     const factSource = document.getElementById('factSource');
     const factOutput = document.getElementById('factOutput');
+    const factOutputMeta = document.getElementById('factOutputMeta');
     const factLimit = document.getElementById('factLimit');
     const loadHint = document.getElementById('loadHint');
+    const topLoadHint = document.getElementById('topLoadHint');
     const playBtn = document.getElementById('play');
+    const playTime = document.getElementById('playTime');
+    const previewProgress = document.getElementById('previewProgress');
     const downloadBtn = document.getElementById('download');
     const multiFiles = document.getElementById('multiFiles');
     const multiPickButton = document.getElementById('multiPickButton');
+    const exportModeVideo = document.getElementById('exportModeVideo');
+    const exportModeImage = document.getElementById('exportModeImage');
+    const exportLengthRow = document.getElementById('exportLengthRow');
+    const frameRateRow = document.getElementById('frameRateRow');
+    const codecValue = document.getElementById('codecValue');
     const dropZone = document.getElementById('dropZone');
     const fileInputs = ['fileA', 'fileB', 'fileC'].map(id => document.getElementById(id));
     const nameEls = ['nameA', 'nameB', 'nameC'].map(id => document.getElementById(id));
@@ -789,6 +894,7 @@
     let playing = false;
     let previewSeen = false;
     let rafId = 0;
+    let exportMode = 'video';
 
     function setStatus(text, state = 'idle') {
       statusEl.textContent = text;
@@ -804,6 +910,9 @@
     function setProcessing(isProcessing) {
       downloadBtn.disabled = isProcessing || !isReady();
       playBtn.disabled = isProcessing || !isReady();
+      previewProgress.disabled = isProcessing || !isReady();
+      exportModeVideo.disabled = isProcessing;
+      exportModeImage.disabled = isProcessing;
       multiFiles.disabled = isProcessing;
       fileInputs.forEach(input => { input.disabled = isProcessing; });
     }
@@ -856,15 +965,17 @@
       checks.files.classList.toggle('done', ready);
       checks.duration.classList.toggle('done', ready && withinTotal);
       checks.duration.classList.toggle('warn', !withinTotal);
-      checks.preview.classList.toggle('done', ready && previewSeen);
+      checks.preview.classList.toggle('done', ready && (previewSeen || exportMode === 'image'));
     }
 
     function updateLoadHint() {
       const count = readyCount();
       const bytes = totalBytes();
       loadHint.textContent = `${count} / 3`;
+      topLoadHint.textContent = `${count} / 3 素材 · ${count === 3 ? '可以预览' : '待选择'}`;
       factSource.textContent = `${count}/3 视频`;
-      factOutput.textContent = `${getExportLength()} 秒 MP4`;
+      factOutput.textContent = exportMode === 'video' ? `${getExportLength()} 秒 MP4` : '三拼图片 PNG';
+      factOutputMeta.textContent = exportMode === 'video' ? '1080 × 1920 / 30fps' : '1080 × 1920 / 当前预览帧';
       factLimit.textContent = bytes ? `${formatSize(bytes)} / ${MAX_TOTAL_MB}MB` : `≤ ${MAX_VIDEO_MB}MB`;
 
       slots.forEach((slot, index) => {
@@ -878,11 +989,33 @@
         if (pickButton) pickButton.childNodes[0].nodeValue = ready ? '替换' : '选择';
       });
 
-      multiPickButton.textContent = count ? '重新选择 3 个视频' : '选择 3 个视频';
+      multiPickButton.textContent = count ? '↻ 重新选择 3 个视频' : '＋ 添加 3 个视频';
       downloadBtn.disabled = !isReady();
       playBtn.disabled = !isReady();
+      previewProgress.disabled = !isReady();
       updateChecks();
       syncSegmentWindows();
+    }
+
+    function syncExportMode(mode) {
+      exportMode = mode === 'image' ? 'image' : 'video';
+      const imageMode = exportMode === 'image';
+      exportModeVideo.classList.toggle('active', !imageMode);
+      exportModeImage.classList.toggle('active', imageMode);
+      exportModeVideo.setAttribute('aria-pressed', String(!imageMode));
+      exportModeImage.setAttribute('aria-pressed', String(imageMode));
+      exportLengthRow.classList.toggle('hidden', imageMode);
+      frameRateRow.classList.toggle('hidden', imageMode);
+      codecValue.textContent = imageMode ? 'PNG 图片' : 'H.264 MP4';
+      downloadBtn.textContent = imageMode ? '↓ 导出三拼图片' : '↓ 导出视频';
+      checks.duration.querySelector('span:last-child').textContent = imageMode
+        ? '图片尺寸符合导出要求'
+        : '时长与体积符合限制';
+      checks.preview.querySelector('span:last-child').textContent = imageMode
+        ? '当前预览帧可导出'
+        : '预览确认后可导出';
+      updateLoadHint();
+      setStatus(imageMode ? '图片模式将导出当前预览画面。' : '视频模式将渲染循环片段。');
     }
 
     function getStart(index) {
@@ -910,6 +1043,13 @@
         segmentWindows[index].style.left = `${clamp(progress, 0, 100)}%`;
         segmentWindows[index].style.width = `${clamp(width, 3, 100)}%`;
       });
+    }
+
+    function updatePreviewProgress(offset = 0) {
+      const length = getClipLength();
+      const safeOffset = clamp(offset, 0, length);
+      previewProgress.value = String(Math.round((safeOffset / length) * 1000));
+      playTime.textContent = `${formatTime(safeOffset)} / ${formatTime(length)}`;
     }
 
     function sanitizeCaption(value) {
@@ -960,17 +1100,17 @@
     function drawPlaceholder() {
       canvas.width = 1080;
       canvas.height = 1920;
-      ctx.fillStyle = '#fbfcfb';
+      ctx.fillStyle = '#fffefd';
       ctx.fillRect(0, 0, canvas.width, canvas.height);
-      ctx.fillStyle = '#e6ece8';
+      ctx.fillStyle = '#f1edeb';
       for (let index = 0; index < 3; index += 1) {
         ctx.fillRect(0, index * 640, canvas.width, 638);
       }
-      ctx.fillStyle = '#141816';
+      ctx.fillStyle = '#201d1b';
       ctx.textAlign = 'center';
       ctx.font = '760 54px system-ui, sans-serif';
       ctx.fillText('选择 3 个 MOV/MP4 视频', canvas.width / 2, canvas.height / 2 - 28);
-      ctx.fillStyle = '#67706b';
+      ctx.fillStyle = '#6f6864';
       ctx.font = '30px system-ui, sans-serif';
       ctx.fillText('生成可发布的竖版三拼 MP4', canvas.width / 2, canvas.height / 2 + 34);
     }
@@ -979,7 +1119,7 @@
       canvas.width = 1080;
       canvas.height = 1920;
       const frameH = canvas.height / 3;
-      ctx.fillStyle = '#000';
+      ctx.fillStyle = '#201d1b';
       ctx.fillRect(0, 0, canvas.width, canvas.height);
       slots.forEach((slot, index) => {
         const y = index * frameH;
@@ -987,9 +1127,9 @@
           coverDraw(slot.video, 0, y, canvas.width, frameH);
           drawCaption(captionInputs[index].value.trim(), 0, y, canvas.width, frameH);
         } else {
-          ctx.fillStyle = '#e6ece8';
+          ctx.fillStyle = '#f1edeb';
           ctx.fillRect(0, y, canvas.width, frameH);
-          ctx.fillStyle = '#67706b';
+          ctx.fillStyle = '#6f6864';
           ctx.textAlign = 'center';
           ctx.font = '700 30px system-ui, sans-serif';
           ctx.fillText(`选择${labels[index]}方视频`, canvas.width / 2, y + frameH / 2 + 10);
@@ -1005,6 +1145,11 @@
         const end = Math.min(slot.duration, start + getClipLength());
         if (slot.video.currentTime >= end || slot.video.currentTime < start) slot.video.currentTime = start;
       });
+      const reference = slots.find(slot => slot.video);
+      const referenceIndex = slots.indexOf(reference);
+      if (reference?.video && referenceIndex >= 0) {
+        updatePreviewProgress(reference.video.currentTime - getStart(referenceIndex));
+      }
       drawFrame();
       rafId = requestAnimationFrame(loopSegments);
     }
@@ -1030,12 +1175,15 @@
     async function resetSegments() {
       await Promise.all(slots.map((slot, index) => slot.video ? seekVideo(slot.video, getStart(index), slot.duration) : Promise.resolve()));
       syncSegmentWindows();
+      updatePreviewProgress(0);
       drawFrame();
     }
 
     function pausePreview(message = '已暂停预览。') {
       playing = false;
-      playBtn.textContent = '预览';
+      playBtn.textContent = '▶';
+      playBtn.setAttribute('aria-label', '播放预览');
+      playBtn.title = '播放预览';
       cancelAnimationFrame(rafId);
       slots.forEach(slot => { if (slot.video) slot.video.pause(); });
       setStatus(message);
@@ -1048,7 +1196,9 @@
       }
       playing = true;
       previewSeen = true;
-      playBtn.textContent = '暂停';
+      playBtn.textContent = 'Ⅱ';
+      playBtn.setAttribute('aria-label', '暂停预览');
+      playBtn.title = '暂停预览';
       await resetSegments();
       await Promise.all(slots.map(slot => slot.video.play()));
       cancelAnimationFrame(rafId);
@@ -1196,6 +1346,34 @@
       }
     }
 
+    async function exportPng() {
+      if (!isReady()) {
+        setStatus('先把上、中、下三个视频都选好。', 'error');
+        return;
+      }
+      if (playing) pausePreview('正在生成三拼图片...');
+      drawFrame();
+      setProcessing(true);
+      setStatus('正在生成 1080 × 1920 三拼图片...', 'busy');
+      try {
+        const blob = await new Promise((resolve, reject) => {
+          canvas.toBlob(result => result ? resolve(result) : reject(new Error('图片生成失败，请重试。')), 'image/png');
+        });
+        const link = document.createElement('a');
+        link.href = URL.createObjectURL(blob);
+        link.download = `clip-trio-${Date.now()}.png`;
+        link.click();
+        setTimeout(() => URL.revokeObjectURL(link.href), 1500);
+        previewSeen = true;
+        updateChecks();
+        setStatus('三拼图片导出完成。', 'success');
+      } catch (error) {
+        setStatus(error.message || '图片导出失败。', 'error');
+      } finally {
+        setProcessing(false);
+      }
+    }
+
     multiFiles.addEventListener('change', event => loadMultiple(event.target.files).catch(error => setStatus(error.message, 'error')));
     multiPickButton.addEventListener('click', () => multiFiles.click());
     fileInputs.forEach((input, index) => input.addEventListener('change', event => loadFileIntoSlot(index, event.target.files[0]).catch(error => setStatus(error.message, 'error'))));
@@ -1219,7 +1397,32 @@
       resetSegments().catch(() => drawFrame());
     }));
     playBtn.addEventListener('click', () => playing ? pausePreview() : startPreview().catch(error => setStatus(error.message, 'error')));
-    downloadBtn.addEventListener('click', () => exportMp4());
+    previewProgress.addEventListener('input', async () => {
+      if (!isReady()) return;
+      const wasPlaying = playing;
+      if (wasPlaying) pausePreview('正在定位预览...');
+      const offset = getClipLength() * (Number(previewProgress.value) / 1000);
+      await Promise.all(slots.map((slot, index) => slot.video
+        ? seekVideo(slot.video, getStart(index) + offset, slot.duration)
+        : Promise.resolve()));
+      updatePreviewProgress(offset);
+      drawFrame();
+      previewSeen = true;
+      updateChecks();
+      setStatus('已定位预览片段。');
+      if (wasPlaying) {
+        playing = true;
+        playBtn.textContent = 'Ⅱ';
+        playBtn.setAttribute('aria-label', '暂停预览');
+        playBtn.title = '暂停预览';
+        Promise.all(slots.map(slot => slot.video.play()))
+          .then(() => loopSegments())
+          .catch(error => setStatus(error.message, 'error'));
+      }
+    });
+    exportModeVideo.addEventListener('click', () => syncExportMode('video'));
+    exportModeImage.addEventListener('click', () => syncExportMode('image'));
+    downloadBtn.addEventListener('click', () => exportMode === 'image' ? exportPng() : exportMp4());
 
     function setDragState(element, isDragging) {
       element.classList.toggle('dragging', isDragging);
@@ -1261,7 +1464,8 @@
 
     syncLabels();
     syncCaptionCounts();
-    updateLoadHint();
+    syncExportMode('video');
+    updatePreviewProgress(0);
     drawPlaceholder();
   </script>
 </body>
