@@ -15,7 +15,11 @@ export const MIN_CLIP_SECONDS = 0.3;
 export const MIN_EXPORT_SECONDS = 1;
 
 export const CAPTION_MAX = 18;
-export const CAPTION_RE = /[A-Za-z0-9一-鿿　-〿＀-￯ ]/u;
+// Must stay byte-identical to the CAPTION_RE definition in server-core.js.
+// The cross-module test test/caption-consistency.test.js enforces that
+// sanitizeCaption() in both modules produces the same output for the same
+// input. If you change one, change the other and update the test fixtures.
+export const CAPTION_RE = /[A-Za-z0-9一-鿿 ]/u;
 
 const MB = 1024 * 1024;
 
