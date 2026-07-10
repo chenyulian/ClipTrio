@@ -1347,7 +1347,7 @@
       previewSeen = false;
       updateLoadHint();
       await resetSegments();
-      setStatus(`已载入${labels[index]}方视频。`);
+      setStatus(`已载入${['上方', '中间', '下方'][index]}视频。`);
       if (wasPlaying && isReady()) startPreview();
     }
 
