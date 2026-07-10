@@ -2,19 +2,19 @@ import http from 'node:http';
 import fs from 'node:fs';
 import fsp from 'node:fs/promises';
 import path from 'node:path';
-import os from 'node:os';
 import crypto from 'node:crypto';
-import { spawn } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import {
   buildFinalRenderArgs,
   buildSegmentArgs,
-  labels,
+  buildProxyResponseHeaders,
+  collectRenderParts,
+  getPublicRenderError,
   maxUploadBytes,
-  maxVideoBytes,
-  maxVideoSeconds,
-  normalizeRenderFields
+  normalizeRenderFields,
+  validateVideoDuration
 } from './server-core.js';
+import { probeDuration, runCommand } from './server-process.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const publicDir = path.join(__dirname, 'public');
@@ -23,6 +23,7 @@ const port = Number(process.env.PORT || 3000);
 const ffmpegPath = process.env.FFMPEG_PATH || 'ffmpeg';
 const ffprobePath = process.env.FFPROBE_PATH || 'ffprobe';
 const renderProxyUrl = process.env.RENDER_PROXY_URL || '';
+const renderProxyTimeoutMs = Number(process.env.RENDER_PROXY_TIMEOUT_MS || 130000);
 
 const mimeTypes = {
   '.html': 'text/html; charset=utf-8',
@@ -48,6 +49,10 @@ function sendJson(res, status, data) {
 
 function sendError(res, status, message) {
   sendJson(res, status, { error: message });
+}
+
+function cleanupJobDir(jobDir) {
+  return fsp.rm(jobDir, { recursive: true, force: true }).catch(() => {});
 }
 
 function parseMultipart(buffer, contentType) {
@@ -91,64 +96,24 @@ function readRequestBody(req) {
   return new Promise((resolve, reject) => {
     const chunks = [];
     let total = 0;
+    let failed = false;
+
     req.on('data', chunk => {
+      if (failed) return;
       total += chunk.length;
       if (total > maxUploadBytes) {
+        failed = true;
         reject(new Error('Upload is too large.'));
         req.destroy();
         return;
       }
       chunks.push(chunk);
     });
-    req.on('end', () => resolve(Buffer.concat(chunks)));
-    req.on('error', reject);
-  });
-}
-
-function run(command, args, cwd) {
-  return new Promise((resolve, reject) => {
-    const child = spawn(command, args, { cwd, windowsHide: true });
-    let stderr = '';
-    child.stderr.on('data', chunk => {
-      stderr += chunk.toString();
-      if (stderr.length > 12000) stderr = stderr.slice(-12000);
+    req.on('end', () => {
+      if (!failed) resolve(Buffer.concat(chunks));
     });
-    child.on('error', reject);
-    child.on('close', code => {
-      if (code === 0) resolve();
-      else reject(new Error(stderr || `${command} exited with code ${code}`));
-    });
-  });
-}
-
-function probeDuration(filePath, cwd) {
-  return new Promise((resolve, reject) => {
-    const child = spawn(ffprobePath, [
-      '-v', 'error',
-      '-show_entries', 'format=duration',
-      '-of', 'default=noprint_wrappers=1:nokey=1',
-      filePath
-    ], { cwd, windowsHide: true });
-    let stdout = '';
-    let stderr = '';
-    child.stdout.on('data', chunk => {
-      stdout += chunk.toString();
-    });
-    child.stderr.on('data', chunk => {
-      stderr += chunk.toString();
-    });
-    child.on('error', reject);
-    child.on('close', code => {
-      if (code !== 0) {
-        reject(new Error(stderr || 'Unable to inspect video duration.'));
-        return;
-      }
-      const duration = Number(stdout.trim());
-      if (!Number.isFinite(duration) || duration <= 0) {
-        reject(new Error('Unable to inspect video duration.'));
-        return;
-      }
-      resolve(duration);
+    req.on('error', error => {
+      if (!failed) reject(error);
     });
   });
 }
@@ -183,12 +148,12 @@ async function renderMp4(files, fields, jobDir) {
   for (let index = 0; index < files.length; index += 1) {
     const segmentPath = path.join(jobDir, `segment-${index}.mp4`);
     segmentPaths.push(segmentPath);
-    await run(ffmpegPath, buildSegmentArgs({
+    await runCommand(ffmpegPath, buildSegmentArgs({
       start: starts[index],
       clipLength,
       inputPath: files[index].path,
       outputPath: segmentPath
-    }), jobDir);
+    }), jobDir, { label: 'FFmpeg segment render' });
   }
 
   if (captionIndexes.length) {
@@ -203,7 +168,7 @@ async function renderMp4(files, fields, jobDir) {
     maskPath,
     outputPath
   });
-  await run(ffmpegPath, args, jobDir);
+  await runCommand(ffmpegPath, args, jobDir, { label: 'FFmpeg final render' });
   return outputPath;
 }
 
@@ -215,34 +180,18 @@ async function handleRender(req, res) {
   try {
     const body = await readRequestBody(req);
     const parts = parseMultipart(body, req.headers['content-type']);
-    const fields = {};
+    const { fields, files: uploadedFiles } = collectRenderParts(parts);
     const files = [];
 
-    for (const part of parts) {
-      if (part.filename) {
-        const slot = labels.indexOf(part.name);
-        if (slot === -1) continue;
-        if (part.data.length > maxVideoBytes) {
-          throw new Error(`Each video must be ${Math.round(maxVideoBytes / 1024 / 1024)}MB or smaller.`);
-        }
-        const ext = path.extname(part.filename).toLowerCase() || '.mov';
-        const filePath = path.join(jobDir, `${slot}${ext}`);
-        await fsp.writeFile(filePath, part.data);
-        files[slot] = { path: filePath, filename: part.filename, size: part.data.length };
-      } else {
-        fields[part.name] = part.data.toString('utf8');
-      }
-    }
-
-    if (files.filter(Boolean).length !== 3) {
-      throw new Error('Please upload top, middle, and bottom videos.');
+    for (const file of uploadedFiles) {
+      const filePath = path.join(jobDir, `${file.slot}${file.extension}`);
+      await fsp.writeFile(filePath, file.data);
+      files[file.slot] = { path: filePath, filename: file.filename, size: file.size };
     }
 
     for (const file of files) {
-      const duration = await probeDuration(file.path, jobDir);
-      if (duration > maxVideoSeconds) {
-        throw new Error(`Video "${file.filename}" is ${duration.toFixed(1)}s. Max duration is ${maxVideoSeconds}s.`);
-      }
+      const duration = await probeDuration(ffprobePath, file.path, jobDir);
+      validateVideoDuration(file, duration);
       file.duration = duration;
     }
 
@@ -256,22 +205,22 @@ async function handleRender(req, res) {
     });
     fs.createReadStream(outputPath).pipe(res);
     res.on('finish', () => {
-      fsp.rm(jobDir, { recursive: true, force: true }).catch(() => {});
+      cleanupJobDir(jobDir);
+    });
+    res.on('close', () => {
+      cleanupJobDir(jobDir);
     });
   } catch (error) {
-    fsp.rm(jobDir, { recursive: true, force: true }).catch(() => {});
-    const missingFfmpeg = error.code === 'ENOENT' || /not recognized|ENOENT|no such file/i.test(error.message);
-    sendError(
-      res,
-      missingFfmpeg ? 500 : 400,
-      missingFfmpeg
-        ? '当前服务找不到 FFmpeg/FFprobe，无法导出 MP4。请使用 Docker 版服务，或安装 FFmpeg 并设置 FFMPEG_PATH/FFPROBE_PATH 后重启服务。'
-        : error.message
-    );
+    cleanupJobDir(jobDir);
+    const publicError = getPublicRenderError(error);
+    sendError(res, publicError.status, publicError.message);
   }
 }
 
 async function handleRenderProxy(req, res) {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), renderProxyTimeoutMs);
+
   try {
     const body = await readRequestBody(req);
     const upstream = await fetch(renderProxyUrl, {
@@ -280,34 +229,47 @@ async function handleRenderProxy(req, res) {
         'content-type': req.headers['content-type'] || 'application/octet-stream',
         'content-length': String(body.length)
       },
-      body
+      body,
+      signal: controller.signal
     });
     const responseBody = Buffer.from(await upstream.arrayBuffer());
-    const headers = {
-      'content-type': upstream.headers.get('content-type') || 'application/octet-stream',
-      'content-length': responseBody.length,
-      'cache-control': upstream.headers.get('cache-control') || 'no-store'
-    };
-    const disposition = upstream.headers.get('content-disposition');
-    if (disposition) headers['content-disposition'] = disposition;
+    const headers = buildProxyResponseHeaders(upstream.headers, responseBody.length);
     res.writeHead(upstream.status, headers);
     res.end(responseBody);
   } catch (error) {
-    sendError(res, 502, `渲染代理失败：${error.message || '无法连接渲染服务。'}`);
+    const timedOut = error?.name === 'AbortError';
+    sendError(res, timedOut ? 504 : 502, timedOut
+      ? '渲染代理超时，请缩短片段或稍后重试。'
+      : `渲染代理失败：${error.message || '无法连接渲染服务。'}`);
+  } finally {
+    clearTimeout(timer);
   }
 }
 
-function serveStatic(req, res) {
-  const requestUrl = new URL(req.url, `http://${req.headers.host}`);
-  const pathname = decodeURIComponent(requestUrl.pathname);
-  const relative = pathname === '/' ? 'index.html' : pathname.slice(1);
-  const safePath = path.normalize(relative).replace(/^(\.\.[/\\])+/, '');
-  const filePath = path.join(publicDir, safePath);
-
-  if (!filePath.startsWith(publicDir)) {
-    sendError(res, 403, 'Forbidden');
-    return;
+function resolveStaticPath(req, res) {
+  let pathname;
+  try {
+    const requestUrl = new URL(req.url, `http://${req.headers.host}`);
+    pathname = decodeURIComponent(requestUrl.pathname);
+  } catch {
+    sendError(res, 400, 'Bad request');
+    return null;
   }
+
+  const relative = pathname === '/' ? 'index.html' : pathname.slice(1);
+  const filePath = path.resolve(publicDir, relative);
+  const relativeFromPublic = path.relative(publicDir, filePath);
+  if (relativeFromPublic.startsWith('..') || path.isAbsolute(relativeFromPublic)) {
+    sendError(res, 403, 'Forbidden');
+    return null;
+  }
+
+  return filePath;
+}
+
+function serveStatic(req, res) {
+  const filePath = resolveStaticPath(req, res);
+  if (!filePath) return;
 
   fs.createReadStream(filePath)
     .on('open', () => {

@@ -5,6 +5,117 @@ export const maxUploadBytes = 1024 * 1024 * 380;
 export const maxVideoSeconds = 30;
 export const maxExportSeconds = 10;
 export const maxClipSeconds = 8;
+export const allowedVideoExtensions = new Set(['.mov', '.mp4', '.m4v']);
+
+export class RenderRequestError extends Error {
+  constructor(message, status = 400) {
+    super(message);
+    this.name = 'RenderRequestError';
+    this.status = status;
+    this.expose = true;
+  }
+}
+
+export function renderRequestError(message, status = 400) {
+  return new RenderRequestError(message, status);
+}
+
+export function isAllowedVideoExtension(extension) {
+  return allowedVideoExtensions.has(String(extension || '').toLowerCase());
+}
+
+export function validateVideoExtension(filename) {
+  const dotIndex = String(filename || '').lastIndexOf('.');
+  const extension = dotIndex >= 0 ? String(filename).slice(dotIndex).toLowerCase() : '';
+  if (!isAllowedVideoExtension(extension)) {
+    throw renderRequestError('Only MOV, MP4, and M4V videos are supported.');
+  }
+  return extension;
+}
+
+export function validateVideoSize(size) {
+  if (Number(size) > maxVideoBytes) {
+    throw renderRequestError(`Each video must be ${Math.round(maxVideoBytes / 1024 / 1024)}MB or smaller.`);
+  }
+}
+
+export function validateRenderFiles(files) {
+  const missing = labels.filter((_, index) => !files[index]);
+  if (missing.length) {
+    throw renderRequestError('Please upload top, middle, and bottom videos.');
+  }
+}
+
+export function validateVideoDuration(file, duration) {
+  if (duration > maxVideoSeconds) {
+    throw renderRequestError(`Video "${file.filename}" is ${duration.toFixed(1)}s. Max duration is ${maxVideoSeconds}s.`);
+  }
+}
+
+export function collectRenderParts(parts) {
+  const fields = {};
+  const files = [];
+
+  for (const part of parts) {
+    if (part.filename) {
+      const slot = labels.indexOf(part.name);
+      if (slot === -1) continue;
+      validateVideoSize(part.data.length);
+      const extension = validateVideoExtension(part.filename || '');
+      files[slot] = {
+        data: part.data,
+        extension,
+        filename: part.filename,
+        size: part.data.length,
+        slot
+      };
+    } else {
+      fields[part.name] = part.data.toString('utf8');
+    }
+  }
+
+  validateRenderFiles(files);
+  return { fields, files };
+}
+
+export function getPublicRenderError(error) {
+  const message = String(error?.message || '');
+  const missingFfmpeg = error?.code === 'ENOENT' || /not recognized|ENOENT|no such file/i.test(message);
+
+  if (missingFfmpeg) {
+    return {
+      status: 500,
+      message: '当前服务找不到 FFmpeg/FFprobe，无法导出 MP4。请使用 Docker 版服务，或安装 FFmpeg 并设置 FFMPEG_PATH/FFPROBE_PATH 后重启服务。'
+    };
+  }
+
+  if (error?.code === 'ETIMEDOUT') {
+    return {
+      status: 504,
+      message: '视频处理超时，请缩短片段或稍后重试。'
+    };
+  }
+
+  if (error?.expose && Number.isInteger(error.status)) {
+    return { status: error.status, message };
+  }
+
+  return {
+    status: 400,
+    message: message || 'Video render failed.'
+  };
+}
+
+export function buildProxyResponseHeaders(upstreamHeaders, bodyLength) {
+  const headers = {
+    'content-type': upstreamHeaders.get('content-type') || 'application/octet-stream',
+    'content-length': bodyLength,
+    'cache-control': upstreamHeaders.get('cache-control') || 'no-store'
+  };
+  const disposition = upstreamHeaders.get('content-disposition');
+  if (disposition) headers['content-disposition'] = disposition;
+  return headers;
+}
 
 export function sanitizeCaption(value) {
   return Array.from(String(value || ''))
