@@ -81,6 +81,14 @@
       outline: none;
     }
 
+    input:disabled {
+      cursor: not-allowed;
+      color: var(--soft);
+      background: #f3efec;
+      border-color: #e3ddd8;
+      opacity: .72;
+    }
+
     input[type="text"]:focus, input[type="number"]:focus {
       border-color: var(--accent);
       box-shadow: 0 0 0 3px rgba(180, 161, 255, .22);
@@ -314,6 +322,16 @@
       align-items: center;
     }
 
+    .segment-picker.is-disabled {
+      opacity: .58;
+    }
+
+    .segment-picker.is-disabled .chip {
+      background: #eee9e5;
+      color: var(--soft);
+      box-shadow: none;
+    }
+
     .segment-control {
       position: relative;
       min-width: 0;
@@ -343,6 +361,27 @@
       box-shadow: inset 0 0 0 1px rgba(91, 74, 67, .08);
     }
 
+    .segment-track::after {
+      content: attr(data-empty);
+      position: absolute;
+      inset: 0;
+      display: none;
+      place-items: center;
+      color: #8b817b;
+      font-size: 11px;
+      background: rgba(255, 250, 247, .72);
+    }
+
+    .segment-picker.is-disabled .segment-track {
+      background-color: #f0ece9;
+      background-image: repeating-linear-gradient(90deg, rgba(138,128,121,.16) 0 1px, transparent 1px 34px);
+      box-shadow: inset 0 0 0 1px rgba(91, 74, 67, .06);
+    }
+
+    .segment-picker.is-disabled .segment-track::after {
+      display: grid;
+    }
+
     .segment-window {
       position: absolute;
       inset-block: 0;
@@ -368,6 +407,10 @@
     .segment-window::before { left: 3px; }
     .segment-window::after { right: 3px; }
 
+    .segment-picker.is-disabled .segment-window {
+      display: none;
+    }
+
     .segment-control input[type="range"] {
       position: absolute;
       inset: 19px 0 -3px;
@@ -377,6 +420,10 @@
     }
 
     .segment-control input[type="range"]:active { cursor: grabbing; }
+
+    .segment-control input[type="range"]:disabled {
+      cursor: not-allowed;
+    }
 
     .caption-row {
       display: grid;
@@ -724,7 +771,7 @@
               <span class="chip">上</span>
               <div class="segment-control">
                 <div class="segment-time"><strong id="startAValue">00:00.0</strong><span id="endAValue">00:03.0</span></div>
-                <div class="segment-track"><div class="segment-window" id="windowA"></div></div>
+                <div class="segment-track" data-empty="先选择上层素材"><div class="segment-window" id="windowA"></div></div>
                 <input id="startA" type="range" min="0" max="1000" value="0" aria-label="上方片段起点">
               </div>
             </div>
@@ -732,7 +779,7 @@
               <span class="chip">中</span>
               <div class="segment-control">
                 <div class="segment-time"><strong id="startBValue">00:00.0</strong><span id="endBValue">00:03.0</span></div>
-                <div class="segment-track"><div class="segment-window" id="windowB"></div></div>
+                <div class="segment-track" data-empty="先选择中层素材"><div class="segment-window" id="windowB"></div></div>
                 <input id="startB" type="range" min="0" max="1000" value="0" aria-label="中间片段起点">
               </div>
             </div>
@@ -740,7 +787,7 @@
               <span class="chip">下</span>
               <div class="segment-control">
                 <div class="segment-time"><strong id="startCValue">00:00.0</strong><span id="endCValue">00:03.0</span></div>
-                <div class="segment-track"><div class="segment-window" id="windowC"></div></div>
+                <div class="segment-track" data-empty="先选择下层素材"><div class="segment-window" id="windowC"></div></div>
                 <input id="startC" type="range" min="0" max="1000" value="0" aria-label="下方片段起点">
               </div>
             </div>
@@ -874,6 +921,8 @@
     const startValues = ['startAValue', 'startBValue', 'startCValue'].map(id => document.getElementById(id));
     const endValues = ['endAValue', 'endBValue', 'endCValue'].map(id => document.getElementById(id));
     const segmentWindows = ['windowA', 'windowB', 'windowC'].map(id => document.getElementById(id));
+    const segmentPickers = startSliders.map(slider => slider.closest('.segment-picker'));
+    const clipLengthInput = document.getElementById('clipLength');
     const clipLengthHint = document.getElementById('clipLengthHint');
     const captionInputs = ['captionA', 'captionB', 'captionC'].map(id => document.getElementById(id));
     const captionValues = ['captionAValue', 'captionBValue', 'captionCValue'].map(id => document.getElementById(id));
@@ -915,6 +964,7 @@
       exportModeImage.disabled = isProcessing;
       multiFiles.disabled = isProcessing;
       fileInputs.forEach(input => { input.disabled = isProcessing; });
+      syncSegmentAvailability(isProcessing);
     }
 
     function clamp(value, min, max) {
@@ -923,7 +973,7 @@
     }
 
     function getClipLength() {
-      return clamp(Number(document.getElementById('clipLength').value), 0.3, 8);
+      return clamp(Number(clipLengthInput.value), 0.3, 8);
     }
 
     function getExportLength() {
@@ -957,6 +1007,18 @@
 
     function totalBytes() {
       return slots.reduce((sum, slot) => sum + (slot.file?.size || 0), 0);
+    }
+
+    function syncSegmentAvailability(isProcessing = false) {
+      const hasAnySource = readyCount() > 0;
+      clipLengthInput.disabled = isProcessing || !hasAnySource;
+
+      startSliders.forEach((slider, index) => {
+        const enabled = !isProcessing && Boolean(slots[index].video && slots[index].duration);
+        slider.disabled = !enabled;
+        slider.setAttribute('aria-disabled', String(!enabled));
+        segmentPickers[index].classList.toggle('is-disabled', !enabled);
+      });
     }
 
     function updateChecks() {
@@ -993,6 +1055,7 @@
       downloadBtn.disabled = !isReady();
       playBtn.disabled = !isReady();
       previewProgress.disabled = !isReady();
+      syncSegmentAvailability();
       updateChecks();
       syncSegmentWindows();
     }
