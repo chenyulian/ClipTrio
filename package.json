@@ -7,7 +7,7 @@
     "start": "node server.js",
     "dev": "node server.js",
     "test": "node --test",
-    "check": "node --check server.js && node --check server-core.js"
+    "check": "node --check server.js && node --check server-core.js && node --check public/app-core.js"
   },
   "engines": {
     "node": ">=18"
