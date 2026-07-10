@@ -432,6 +432,20 @@
       align-items: center;
     }
 
+    .caption-row.is-disabled {
+      opacity: .58;
+    }
+
+    .caption-row.is-disabled .chip {
+      background: #eee9e5;
+      color: var(--soft);
+      box-shadow: none;
+    }
+
+    .caption-row input:disabled {
+      cursor: not-allowed;
+    }
+
     .export-settings { display: grid; gap: 10px; }
 
     .value {
@@ -797,9 +811,9 @@
         <div class="section">
           <div class="section-title">字幕水印 <span class="hint">每层最多 18 字</span></div>
           <div class="caption-grid">
-            <div class="caption-row"><span class="chip">上</span><input id="captionA" type="text" maxlength="18" placeholder="上方字幕，可留空"><span class="value" id="captionAValue">0/18</span></div>
-            <div class="caption-row"><span class="chip">中</span><input id="captionB" type="text" maxlength="18" placeholder="中间字幕，可留空"><span class="value" id="captionBValue">0/18</span></div>
-            <div class="caption-row"><span class="chip">下</span><input id="captionC" type="text" maxlength="18" placeholder="下方字幕，可留空"><span class="value" id="captionCValue">0/18</span></div>
+            <div class="caption-row"><span class="chip">上</span><input id="captionA" type="text" maxlength="18" placeholder="上方字幕，可留空" disabled><span class="value" id="captionAValue">0/18</span></div>
+            <div class="caption-row"><span class="chip">中</span><input id="captionB" type="text" maxlength="18" placeholder="中间字幕，可留空" disabled><span class="value" id="captionBValue">0/18</span></div>
+            <div class="caption-row"><span class="chip">下</span><input id="captionC" type="text" maxlength="18" placeholder="下方字幕，可留空" disabled><span class="value" id="captionCValue">0/18</span></div>
           </div>
         </div>
 
@@ -926,6 +940,7 @@
     const clipLengthHint = document.getElementById('clipLengthHint');
     const captionInputs = ['captionA', 'captionB', 'captionC'].map(id => document.getElementById(id));
     const captionValues = ['captionAValue', 'captionBValue', 'captionCValue'].map(id => document.getElementById(id));
+    const captionRows = captionInputs.map(input => input.closest('.caption-row'));
     const checks = {
       files: document.getElementById('checkFiles'),
       duration: document.getElementById('checkDuration'),
@@ -1018,6 +1033,13 @@
         slider.disabled = !enabled;
         slider.setAttribute('aria-disabled', String(!enabled));
         segmentPickers[index].classList.toggle('is-disabled', !enabled);
+      });
+
+      captionInputs.forEach((input, index) => {
+        const enabled = !isProcessing && Boolean(slots[index].video && slots[index].duration);
+        input.disabled = !enabled;
+        input.setAttribute('aria-disabled', String(!enabled));
+        captionRows[index].classList.toggle('is-disabled', !enabled);
       });
     }
 
