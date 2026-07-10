@@ -6,6 +6,15 @@ import os from 'node:os';
 import crypto from 'node:crypto';
 import { spawn } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
+import {
+  buildFinalRenderArgs,
+  buildSegmentArgs,
+  labels,
+  maxUploadBytes,
+  maxVideoBytes,
+  maxVideoSeconds,
+  normalizeRenderFields
+} from './server-core.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const publicDir = path.join(__dirname, 'public');
@@ -14,12 +23,6 @@ const port = Number(process.env.PORT || 3000);
 const ffmpegPath = process.env.FFMPEG_PATH || 'ffmpeg';
 const ffprobePath = process.env.FFPROBE_PATH || 'ffprobe';
 const renderProxyUrl = process.env.RENDER_PROXY_URL || '';
-const maxVideoBytes = 1024 * 1024 * 120;
-const maxUploadBytes = 1024 * 1024 * 380;
-const maxVideoSeconds = 30;
-const maxExportSeconds = 10;
-const maxClipSeconds = 8;
-const labels = ['top', 'middle', 'bottom'];
 
 const mimeTypes = {
   '.html': 'text/html; charset=utf-8',
@@ -45,29 +48,6 @@ function sendJson(res, status, data) {
 
 function sendError(res, status, message) {
   sendJson(res, status, { error: message });
-}
-
-function sanitizeCaption(value) {
-  return Array.from(String(value || ''))
-    .filter(char => /[A-Za-z0-9\u4e00-\u9fff ]/.test(char))
-    .slice(0, 18)
-    .join('')
-    .trim();
-}
-
-function sanitizeNumber(value, fallback, min, max) {
-  const parsed = Number(value);
-  if (!Number.isFinite(parsed)) return fallback;
-  return Math.max(min, Math.min(max, parsed));
-}
-
-function ffmpegText(value) {
-  return value
-    .replace(/\\/g, '\\\\')
-    .replace(/:/g, '\\:')
-    .replace(/'/g, "\\'")
-    .replace(/\[/g, '\\[')
-    .replace(/\]/g, '\\]');
 }
 
 function parseMultipart(buffer, contentType) {
@@ -194,19 +174,8 @@ async function writeGradientMask(maskPath, width = 1080, height = 640) {
   await fsp.writeFile(maskPath, Buffer.concat([header, pixels]));
 }
 
-function buildDrawText(caption, yExpression) {
-  if (!caption) return '';
-  const text = ffmpegText(caption);
-  const font = '/usr/share/fonts/opentype/noto/NotoSansCJK-Regular.ttc';
-  return `drawtext=fontfile=${font}:text='${text}':fontcolor=white@0.92:fontsize=34:x=(w-text_w)/2:y=${yExpression}`;
-}
-
 async function renderMp4(files, fields, jobDir) {
-  const exportLength = sanitizeNumber(fields.exportLength, 5, 1, maxExportSeconds);
-  const clipLength = sanitizeNumber(fields.clipLength, 3, 0.3, maxClipSeconds);
-  const starts = labels.map((_, index) => sanitizeNumber(fields[`start${index}`], 0, 0, 9999));
-  const captions = labels.map((_, index) => sanitizeCaption(fields[`caption${index}`]));
-  const captionIndexes = captions.map((caption, index) => caption ? index : -1).filter(index => index >= 0);
+  const { exportLength, clipLength, starts, captions, captionIndexes } = normalizeRenderFields(fields);
   const outputPath = path.join(jobDir, 'triptych.mp4');
   const maskPath = path.join(jobDir, 'caption-gradient.pgm');
   const segmentPaths = [];
@@ -214,71 +183,26 @@ async function renderMp4(files, fields, jobDir) {
   for (let index = 0; index < files.length; index += 1) {
     const segmentPath = path.join(jobDir, `segment-${index}.mp4`);
     segmentPaths.push(segmentPath);
-    await run(ffmpegPath, [
-      '-y',
-      '-hide_banner',
-      '-ss', String(starts[index]),
-      '-t', String(clipLength),
-      '-i', files[index].path,
-      '-an',
-      '-c:v', 'libx264',
-      '-pix_fmt', 'yuv420p',
-      '-preset', 'ultrafast',
-      '-crf', '20',
-      segmentPath
-    ], jobDir);
+    await run(ffmpegPath, buildSegmentArgs({
+      start: starts[index],
+      clipLength,
+      inputPath: files[index].path,
+      outputPath: segmentPath
+    }), jobDir);
   }
 
-  const args = ['-y', '-hide_banner'];
-  segmentPaths.forEach(segmentPath => {
-    args.push('-stream_loop', '-1', '-i', segmentPath);
-  });
   if (captionIndexes.length) {
     await writeGradientMask(maskPath);
-    args.push('-loop', '1', '-t', String(exportLength), '-i', maskPath);
-  }
-  args.push('-f', 'lavfi', '-t', String(exportLength), '-i', 'anullsrc=channel_layout=stereo:sample_rate=44100');
-
-  const chains = [];
-
-  if (captionIndexes.length === 1) {
-    chains.push(`[3:v]format=gray[m${captionIndexes[0]}]`);
-  } else if (captionIndexes.length > 1) {
-    chains.push(`[3:v]format=gray,split=${captionIndexes.length}${captionIndexes.map(index => `[m${index}]`).join('')}`);
   }
 
-  labels.forEach((_, index) => {
-    chains.push(`[${index}:v]trim=duration=${exportLength},setpts=PTS-STARTPTS,scale=1080:640:force_original_aspect_ratio=increase,crop=1080:640,setsar=1,fps=30[base${index}]`);
-
-    if (captions[index]) {
-      chains.push(`color=c=black:s=1080x640:d=${exportLength},format=rgba[black${index}]`);
-      chains.push(`[black${index}][m${index}]alphamerge[grad${index}]`);
-      chains.push(`[base${index}][grad${index}]overlay=0:0,${buildDrawText(captions[index], 'h-72')}[v${index}]`);
-    } else {
-      chains.push(`[base${index}]copy[v${index}]`);
-    }
-  });
-
-  const filterComplex = `${chains.join(';')};[v0][v1][v2]vstack=inputs=3,format=yuv420p[v]`;
-
-  args.push(
-    '-filter_complex', filterComplex,
-    '-map', '[v]',
-    '-map', `${captionIndexes.length ? 4 : 3}:a`,
-    '-t', String(exportLength),
-    '-c:v', 'libx264',
-    '-profile:v', 'high',
-    '-level', '4.1',
-    '-pix_fmt', 'yuv420p',
-    '-r', '30',
-    '-crf', '18',
-    '-preset', 'veryfast',
-    '-c:a', 'aac',
-    '-b:a', '128k',
-    '-movflags', '+faststart',
+  const args = buildFinalRenderArgs({
+    segmentPaths,
+    exportLength,
+    captions,
+    captionIndexes,
+    maskPath,
     outputPath
-  );
-
+  });
   await run(ffmpegPath, args, jobDir);
   return outputPath;
 }
