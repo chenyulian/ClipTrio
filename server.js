@@ -15,6 +15,14 @@ import {
   validateVideoDuration
 } from './server-core.js';
 import { probeDuration, runCommand } from './server-process.js';
+import {
+  CAPTION_GRADIENT_START,
+  FFMPEG_GRADIENT_BASE_OPACITY,
+  FFMPEG_GRADIENT_EXPONENT,
+  FFMPEG_GRADIENT_OPACITY_RANGE,
+  OUTPUT_WIDTH,
+  SECTION_HEIGHT
+} from './public/composition-core.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const publicDir = path.join(__dirname, 'public');
@@ -118,16 +126,18 @@ function readRequestBody(req) {
   });
 }
 
-async function writeGradientMask(maskPath, width = 1080, height = 640) {
+async function writeGradientMask(maskPath, width = OUTPUT_WIDTH, height = SECTION_HEIGHT) {
   const header = Buffer.from(`P5\n${width} ${height}\n255\n`, 'ascii');
   const pixels = Buffer.alloc(width * height);
-  const start = 0.58;
-  const span = 0.42;
+  const start = CAPTION_GRADIENT_START;
+  const span = 1 - start;
 
   for (let y = 0; y < height; y += 1) {
     const normalizedY = y / (height - 1);
     const progress = Math.max(0, Math.min(1, (normalizedY - start) / span));
-    const opacity = progress === 0 ? 0 : 0.012 + 0.34 * Math.pow(progress, 1.85);
+    const opacity = progress === 0
+      ? 0
+      : FFMPEG_GRADIENT_BASE_OPACITY + FFMPEG_GRADIENT_OPACITY_RANGE * Math.pow(progress, FFMPEG_GRADIENT_EXPONENT);
 
     for (let x = 0; x < width; x += 1) {
       const dither = (((x * 13 + y * 17) % 7) - 3) / 255;

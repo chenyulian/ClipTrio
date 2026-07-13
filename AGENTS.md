@@ -34,10 +34,16 @@ Do not silently change these semantics.
 
 - `public/index.html`
   - No-build frontend entry.
-  - Contains HTML, CSS, browser orchestration, Canvas preview, file handling, PNG export, and MP4 request logic.
+  - Contains the semantic HTML and CSS for the single-page editor.
 - `public/app-core.js`
   - Pure frontend formatting, timing, readiness, and export-mode helpers.
   - Covered by Node built-in tests.
+- `public/app.js`
+  - Browser orchestration, file-slot lifecycle, preview transport, and export transport.
+- `public/canvas-renderer.js`
+  - Canvas preview/PNG composition with testable drawing boundaries.
+- `public/composition-core.js`
+  - Shared output geometry and caption parameters used by Canvas and FFmpeg.
 - `server.js`
   - Dependency-free Node HTTP server.
   - Serves static files.
@@ -77,12 +83,14 @@ Completed:
 - Phase 2: frontend pure helpers extracted to `public/app-core.js` with tests.
 - Phase 3 core implementation: backend validation, subprocess timeout, bounded output, cleanup paths, and error mapping hardened.
 - Phase 4: deterministic MP4 fixtures and Docker direct/local proxy smoke tests added.
+- Phase 5: browser orchestration extracted from `public/index.html` without a build system.
+- Phase 6: Canvas/FFmpeg layout constants centralized and Canvas composition boundaries covered by tests.
 
 Current priorities:
 
 1. Finish Phase 3 route-level coverage for real multipart requests, proxy failures, disconnect cleanup, and static path traversal.
-2. Continue Phase 5 frontend structure cleanup without adding a build system.
-3. Complete Phase 6 Canvas PNG, preview, and MP4 consistency work, including automated PNG checks.
+2. Continue small frontend lifecycle extractions only when they add a focused test boundary.
+3. Keep the automated Canvas geometry checks and manual browser PNG smoke check current when composition changes.
 
 Do not repeat completed phases unless a regression or a direct task requires it.
 
@@ -329,7 +337,7 @@ npm run smoke:render
 - `npm run smoke:render` verifies Docker direct rendering and the local 3001 proxy by default.
 - It checks response MIME type, non-empty output, H.264/AAC metadata, 1080 x 1920 dimensions, 30fps, yuv420p, selected segment starts, section order, and looping.
 - Inspect the generated review frames when caption rendering or gradients change.
-- Browser Canvas PNG export still requires the deterministic manual check in `RENDER_SMOKE_TEST.md` until Phase 6 extracts testable Canvas composition helpers.
+- Canvas backing dimensions, section boundaries, cover geometry, caption placement, and shared FFmpeg geometry are automated; the final browser-generated PNG remains a documented visual smoke check in `RENDER_SMOKE_TEST.md`.
 
 ## Definition Of Done
 
@@ -365,7 +373,7 @@ For an agent continuing V1 hardening:
 
 1. Read `V1_CODE_OPTIMIZATION_PLAN.md` and confirm the current phase status.
 2. Add route-level tests for real multipart requests, proxy failures, disconnect cleanup, and path traversal behavior.
-3. Extract browser orchestration from `public/index.html` into `public/app.js` in small verified steps.
-4. Centralize preview/PNG/MP4 layout constants and automate Canvas PNG consistency checks.
+3. Extract smaller browser lifecycle units from `public/app.js` only alongside focused tests.
+4. Add an encoded browser-PNG smoke assertion if a dependency-free browser test harness becomes available.
 
 Avoid a full rewrite. V1 benefits more from tested boundaries and predictable failure recovery than from a new framework.

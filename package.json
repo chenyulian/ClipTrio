@@ -7,7 +7,7 @@
     "start": "node server.js",
     "dev": "node server.js",
     "test": "node --test",
-    "check": "node --check server.js && node --check server-core.js && node --check server-process.js && node --check public/app-core.js && node --check scripts/media-tools.js && node --check scripts/smoke-core.js && node --check scripts/generate-fixtures.js && node --check scripts/smoke-render.js",
+    "check": "node --check server.js && node --check server-core.js && node --check server-process.js && node --check public/app-core.js && node --check public/composition-core.js && node --check public/canvas-renderer.js && node --check public/app.js && node --check scripts/media-tools.js && node --check scripts/smoke-core.js && node --check scripts/generate-fixtures.js && node --check scripts/smoke-render.js",
     "fixtures": "node scripts/generate-fixtures.js",
     "smoke:render": "node scripts/smoke-render.js",
     "smoke:render:direct": "node scripts/smoke-render.js --target=direct",

@@ -7,7 +7,7 @@ RUN apt-get update \
 
 WORKDIR /app
 COPY package.json ./
-COPY server.js ./
+COPY server.js server-core.js server-process.js ./
 COPY public ./public
 
 ENV NODE_ENV=production

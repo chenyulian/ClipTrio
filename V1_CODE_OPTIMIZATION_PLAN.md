@@ -180,6 +180,15 @@ Only add scripts when they run real checks.
 
 Goal: reduce `public/index.html` size while preserving the no-build setup.
 
+Status: completed on 2026-07-13.
+
+Implemented:
+
+- Moved browser orchestration, source lifecycle, preview transport, and export transport to `public/app.js`.
+- Extracted Canvas preview/PNG drawing to `public/canvas-renderer.js`.
+- Kept semantic HTML and the existing CSS in `public/index.html` to minimize visual churn.
+- Added every executable frontend module to `npm run check`.
+
 Tasks:
 
 - Move pure logic to `public/app-core.js`.
@@ -203,6 +212,15 @@ Stop after each step and verify.
 ## Phase 6: Preview And Export Consistency
 
 Goal: make Canvas preview, PNG export, and MP4 export match as closely as practical.
+
+Status: completed on 2026-07-13 for shared geometry and dependency-free automated checks. The final encoded browser PNG remains in the deterministic manual smoke flow.
+
+Implemented:
+
+- Centralized 1080 x 1920 output size, three 640px sections, 30fps, caption positions, and gradient parameters in `public/composition-core.js`.
+- Reused the shared geometry in Canvas drawing, FFmpeg filter construction, and server-side gradient-mask generation.
+- Added automated checks for Canvas backing dimensions, contiguous section boundaries, centered cover crop, caption baseline/gradient placement, and FFmpeg scale/crop/fps output.
+- Preserved the existing Canvas system-font rendering and FFmpeg Noto CJK rendering. Their glyph metrics and rasterization remain intentionally platform-specific; geometry and sanitized caption text are shared.
 
 Tasks:
 

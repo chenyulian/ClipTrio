@@ -1,3 +1,12 @@
+import {
+  FFMPEG_CAPTION_FONT_OPACITY,
+  FFMPEG_CAPTION_FONT_SIZE,
+  getFfmpegCaptionYExpression,
+  OUTPUT_FPS,
+  OUTPUT_WIDTH,
+  SECTION_HEIGHT
+} from './public/composition-core.js';
+
 export const labels = ['top', 'middle', 'bottom'];
 
 export const maxVideoBytes = 1024 * 1024 * 120;
@@ -140,11 +149,11 @@ export function ffmpegText(value) {
     .replace(/\]/g, '\\]');
 }
 
-export function buildDrawText(caption, yExpression) {
+export function buildDrawText(caption, yExpression = getFfmpegCaptionYExpression()) {
   if (!caption) return '';
   const text = ffmpegText(caption);
   const font = '/usr/share/fonts/opentype/noto/NotoSansCJK-Regular.ttc';
-  return `drawtext=fontfile=${font}:text='${text}':fontcolor=white@0.92:fontsize=34:x=(w-text_w)/2:y=${yExpression}`;
+  return `drawtext=fontfile=${font}:text='${text}':fontcolor=white@${FFMPEG_CAPTION_FONT_OPACITY}:fontsize=${FFMPEG_CAPTION_FONT_SIZE}:x=(w-text_w)/2:y=${yExpression}`;
 }
 
 export function normalizeRenderFields(fields = {}) {
@@ -185,12 +194,12 @@ export function buildFilterComplex({ exportLength, captions, captionIndexes }) {
   }
 
   labels.forEach((_, index) => {
-    chains.push(`[${index}:v]trim=duration=${exportLength},setpts=PTS-STARTPTS,scale=1080:640:force_original_aspect_ratio=increase,crop=1080:640,setsar=1,fps=30[base${index}]`);
+    chains.push(`[${index}:v]trim=duration=${exportLength},setpts=PTS-STARTPTS,scale=${OUTPUT_WIDTH}:${SECTION_HEIGHT}:force_original_aspect_ratio=increase,crop=${OUTPUT_WIDTH}:${SECTION_HEIGHT},setsar=1,fps=${OUTPUT_FPS}[base${index}]`);
 
     if (captions[index]) {
-      chains.push(`color=c=black:s=1080x640:d=${exportLength},format=rgba[black${index}]`);
+      chains.push(`color=c=black:s=${OUTPUT_WIDTH}x${SECTION_HEIGHT}:d=${exportLength},format=rgba[black${index}]`);
       chains.push(`[black${index}][m${index}]alphamerge[grad${index}]`);
-      chains.push(`[base${index}][grad${index}]overlay=0:0,${buildDrawText(captions[index], 'h-72')}[v${index}]`);
+      chains.push(`[base${index}][grad${index}]overlay=0:0,${buildDrawText(captions[index])}[v${index}]`);
     } else {
       chains.push(`[base${index}]copy[v${index}]`);
     }
@@ -220,7 +229,7 @@ export function buildFinalRenderArgs({ segmentPaths, exportLength, captions, cap
     '-profile:v', 'high',
     '-level', '4.1',
     '-pix_fmt', 'yuv420p',
-    '-r', '30',
+    '-r', String(OUTPUT_FPS),
     '-crf', '18',
     '-preset', 'veryfast',
     '-c:a', 'aac',

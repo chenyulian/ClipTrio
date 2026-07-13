@@ -100,4 +100,7 @@ test('buildFinalRenderArgs includes caption mask and drawtext filters', () => {
   assert.match(filterComplex, /\[3:v\]format=gray,split=2\[m0\]\[m2\]/);
   assert.match(filterComplex, /drawtext=.*text='上层'/);
   assert.match(filterComplex, /drawtext=.*text='下层'/);
+  assert.match(filterComplex, /scale=1080:640/);
+  assert.match(filterComplex, /crop=1080:640/);
+  assert.match(filterComplex, /fps=30/);
 });
