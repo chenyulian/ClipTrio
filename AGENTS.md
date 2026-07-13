@@ -46,10 +46,9 @@ Do not silently change these semantics.
   - Shared output geometry and caption parameters used by Canvas and FFmpeg.
 - `server.js`
   - Dependency-free Node HTTP server.
-  - Serves static files.
-  - Parses multipart uploads.
   - Probes videos and renders MP4 through FFmpeg.
-  - Can proxy `/api/render` through `RENDER_PROXY_URL`.
+- `server-http.js`
+  - Testable HTTP routing, multipart parsing, static serving, proxy transport, request cancellation, and render-job cleanup.
 - `server-core.js`
   - Pure backend validation, render-field normalization, error mapping, and FFmpeg argument construction.
 - `server-process.js`
@@ -82,15 +81,16 @@ Completed:
 - Phase 1: dependency controls, atomic source replacement, persistent inline validation, export readiness, and failure-state preservation hardened.
 - Phase 2: frontend pure helpers extracted to `public/app-core.js` with tests.
 - Phase 3 core implementation: backend validation, subprocess timeout, bounded output, cleanup paths, and error mapping hardened.
+- Phase 3 route coverage: real multipart requests, proxy behavior, static traversal, disconnect cancellation, and cleanup paths covered.
 - Phase 4: deterministic MP4 fixtures and Docker direct/local proxy smoke tests added.
 - Phase 5: browser orchestration extracted from `public/index.html` without a build system.
 - Phase 6: Canvas/FFmpeg layout constants centralized and Canvas composition boundaries covered by tests.
 
 Current priorities:
 
-1. Finish Phase 3 route-level coverage for real multipart requests, proxy failures, disconnect cleanup, and static path traversal.
+1. Add an encoded browser-PNG smoke assertion if a dependency-free browser test harness becomes available.
 2. Continue small frontend lifecycle extractions only when they add a focused test boundary.
-3. Keep the automated Canvas geometry checks and manual browser PNG smoke check current when composition changes.
+3. Keep route lifecycle and Canvas geometry checks current when render behavior changes.
 
 Do not repeat completed phases unless a regression or a direct task requires it.
 
@@ -170,14 +170,14 @@ Current automated coverage includes:
 - Render request validation helpers.
 - FFmpeg/FFprobe process timeout and bounded stderr behavior.
 - Deterministic direct/proxy render output metadata, section order, segment starts, and looping.
+- Real HTTP multipart success and malformed requests.
+- Route-level validation, proxy propagation/failures/timeouts, and static path traversal.
+- Upload, render, and proxy disconnect cancellation with temporary-directory cleanup.
 
 Highest-value remaining targets:
 
-- Real HTTP multipart requests and malformed bodies.
-- Render proxy failure and upstream error propagation at the route level.
-- Static file routing and path traversal rejection.
-- Client disconnect and temporary-directory cleanup behavior.
-- Canvas composition helpers where practical.
+- Encoded browser Canvas PNG dimensions, section colors, boundaries, and captions.
+- Additional browser lifecycle extraction only where it creates a focused automated boundary.
 
 Prefer Node's built-in test runner while the project remains dependency-free:
 
@@ -372,8 +372,8 @@ https://github.com/chenyulian/ClipTrio.git
 For an agent continuing V1 hardening:
 
 1. Read `V1_CODE_OPTIMIZATION_PLAN.md` and confirm the current phase status.
-2. Add route-level tests for real multipart requests, proxy failures, disconnect cleanup, and path traversal behavior.
+2. Add an encoded browser-PNG smoke assertion if a dependency-free browser test harness becomes available.
 3. Extract smaller browser lifecycle units from `public/app.js` only alongside focused tests.
-4. Add an encoded browser-PNG smoke assertion if a dependency-free browser test harness becomes available.
+4. Keep direct Docker and local proxy smoke verification current after render changes.
 
 Avoid a full rewrite. V1 benefits more from tested boundaries and predictable failure recovery than from a new framework.

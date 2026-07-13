@@ -38,3 +38,19 @@ test('runCommand rejects and kills timed-out subprocesses', async () => {
     }
   );
 });
+
+test('runCommand rejects and kills a subprocess when its request is aborted', async () => {
+  const controller = new AbortController();
+  const running = runCommand(process.execPath, ['-e', 'setTimeout(() => {}, 5000);'], process.cwd(), {
+    label: 'node aborted work',
+    timeoutMs: 1000,
+    signal: controller.signal
+  });
+  controller.abort();
+  await assert.rejects(running, error => {
+    assert.equal(error.name, 'AbortError');
+    assert.equal(error.code, 'ABORT_ERR');
+    assert.match(error.message, /node aborted work was aborted/);
+    return true;
+  });
+});

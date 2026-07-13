@@ -15,9 +15,17 @@ function timeoutError(label, timeoutMs) {
   return error;
 }
 
+function abortError(label) {
+  const error = new Error(`${label} was aborted.`);
+  error.name = 'AbortError';
+  error.code = 'ABORT_ERR';
+  return error;
+}
+
 export function runCommand(command, args, cwd, options = {}) {
   const timeoutMs = options.timeoutMs ?? defaultProcessTimeoutMs;
   const label = options.label || command;
+  const signal = options.signal;
 
   return new Promise((resolve, reject) => {
     const child = spawn(command, args, { cwd, windowsHide: true });
@@ -28,7 +36,13 @@ export function runCommand(command, args, cwd, options = {}) {
       if (settled) return;
       settled = true;
       clearTimeout(timer);
+      signal?.removeEventListener('abort', onAbort);
       result();
+    };
+
+    const onAbort = () => {
+      child.kill('SIGKILL');
+      finish(() => reject(abortError(label)));
     };
 
     const timer = setTimeout(() => {
@@ -48,11 +62,14 @@ export function runCommand(command, args, cwd, options = {}) {
         else reject(new Error(stderr || `${command} exited with code ${code}`));
       });
     });
+    signal?.addEventListener('abort', onAbort, { once: true });
+    if (signal?.aborted) onAbort();
   });
 }
 
 export function probeDuration(command, filePath, cwd, options = {}) {
   const timeoutMs = options.timeoutMs ?? defaultProbeTimeoutMs;
+  const signal = options.signal;
 
   return new Promise((resolve, reject) => {
     const child = spawn(command, [
@@ -69,7 +86,13 @@ export function probeDuration(command, filePath, cwd, options = {}) {
       if (settled) return;
       settled = true;
       clearTimeout(timer);
+      signal?.removeEventListener('abort', onAbort);
       result();
+    };
+
+    const onAbort = () => {
+      child.kill('SIGKILL');
+      finish(() => reject(abortError('FFprobe')));
     };
 
     const timer = setTimeout(() => {
@@ -100,5 +123,7 @@ export function probeDuration(command, filePath, cwd, options = {}) {
         resolve(duration);
       });
     });
+    signal?.addEventListener('abort', onAbort, { once: true });
+    if (signal?.aborted) onAbort();
   });
 }

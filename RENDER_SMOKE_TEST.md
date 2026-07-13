@@ -110,9 +110,9 @@ Canvas uses the browser's system font stack while MP4 rendering uses Noto Sans C
 
 ## Last Verified Result
 
-Verified on 2026-07-13 after the Phase 5-6 extraction:
+Verified on 2026-07-13 after the Phase 3 route hardening and Phase 5-6 extraction:
 
-- 51/51 Node tests passed.
+- 62/62 Node tests passed.
 - Syntax checks passed.
 - Direct Docker render passed: H.264/AAC, 1080 x 1920, 30fps, yuv420p, 4.00s.
 - Local proxy render passed with the same contract.

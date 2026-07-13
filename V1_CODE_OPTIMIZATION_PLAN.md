@@ -135,6 +135,17 @@ node -e "const fs=require('fs');const h=fs.readFileSync('public/index.html','utf
 
 Goal: make MP4 export failure modes predictable and recoverable.
 
+Status: completed on 2026-07-13.
+
+Implemented:
+
+- Extracted dependency-injected HTTP routing and lifecycle handling to `server-http.js` while keeping `server.js` as the production FFmpeg entry.
+- Added real HTTP multipart success, malformed body, missing file, invalid extension, per-video limit, total upload limit, and duration-validation tests.
+- Added route tests for proxy success, upstream errors, connection failure, timeout, and downstream disconnect cancellation.
+- Added static file, invalid URL encoding, method rejection, and Windows/URL-encoded path traversal tests.
+- Unified render-job cleanup across success, validation failure, render failure, upload disconnect, render disconnect, and response close.
+- Propagated request abort signals to FFmpeg/FFprobe subprocess execution and prevented unknown render errors from exposing internal paths or command details.
+
 Tasks:
 
 - Add tests for multipart parsing and malformed requests.
@@ -158,7 +169,7 @@ Avoid changing `/api/render` contract unless tests and docs are updated together
 
 Goal: make MP4 and PNG export easy to smoke test.
 
-Status: completed on 2026-07-10 for automated MP4 direct/proxy verification. Browser Canvas PNG uses the documented deterministic manual check until Phase 6 extracts testable Canvas composition helpers.
+Status: completed on 2026-07-10 for automated MP4 direct/proxy verification. Phase 6 added dependency-free Canvas geometry checks; the final encoded browser PNG remains a documented deterministic manual check.
 
 Tasks:
 

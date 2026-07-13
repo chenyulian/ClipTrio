@@ -42,9 +42,9 @@ export function validateVideoExtension(filename) {
   return extension;
 }
 
-export function validateVideoSize(size) {
-  if (Number(size) > maxVideoBytes) {
-    throw renderRequestError(`Each video must be ${Math.round(maxVideoBytes / 1024 / 1024)}MB or smaller.`);
+export function validateVideoSize(size, limit = maxVideoBytes) {
+  if (Number(size) > limit) {
+    throw renderRequestError(`Each video must be ${Math.round(limit / 1024 / 1024)}MB or smaller.`);
   }
 }
 
@@ -61,7 +61,8 @@ export function validateVideoDuration(file, duration) {
   }
 }
 
-export function collectRenderParts(parts) {
+export function collectRenderParts(parts, options = {}) {
+  const videoSizeLimit = options.maxVideoBytes ?? maxVideoBytes;
   const fields = {};
   const files = [];
 
@@ -69,7 +70,7 @@ export function collectRenderParts(parts) {
     if (part.filename) {
       const slot = labels.indexOf(part.name);
       if (slot === -1) continue;
-      validateVideoSize(part.data.length);
+      validateVideoSize(part.data.length, videoSizeLimit);
       const extension = validateVideoExtension(part.filename || '');
       files[slot] = {
         data: part.data,
@@ -111,7 +112,7 @@ export function getPublicRenderError(error) {
 
   return {
     status: 400,
-    message: message || 'Video render failed.'
+    message: 'Video render failed.'
   };
 }
 
