@@ -52,6 +52,25 @@ http://127.0.0.1:3001/
 
 Goal: remove confusion and preserve user work across normal editing.
 
+Status: completed on 2026-07-13.
+
+Implemented:
+
+- Segment and caption controls remain disabled until their source slot is ready.
+- Single-slot replacement validates the new video before committing and releasing the old object URL/video element.
+- Three-file replacement validates every file and duration before committing all slots together.
+- Invalid type, per-file size, duration, count, and total-size issues remain visible beside the relevant source controls.
+- Export readiness includes the total-size rule and shows the blocking reason beside the disabled export button.
+- Export failure changes status only; selected files, segment starts, captions, export mode, and duration settings remain intact.
+- File inputs reset after each attempt so users can retry the same file.
+
+Verification completed:
+
+- Frontend validation/readiness tests added with Node's built-in test runner.
+- Empty state checked at 1280 x 720 and 1440 x 900 with no horizontal overflow.
+- Browser module loaded without console errors.
+- Docker direct and local proxy MP4 smoke tests passed after the change.
+
 Tasks:
 
 - Add clear disabled or empty states for controls that depend on missing inputs.

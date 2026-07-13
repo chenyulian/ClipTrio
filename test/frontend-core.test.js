@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
+  ALLOWED_VIDEO_EXTENSIONS,
   buildChecklistText,
   buildExportModeView,
   buildLoadHint,
@@ -14,18 +15,24 @@ import {
   getSegmentEnd,
   getSegmentWindow,
   getStart,
+  getExportReadiness,
   isReady,
   labels,
   MAX_EXPORT_SECONDS,
   MAX_TOTAL_BYTES,
   MAX_TOTAL_MB,
+  MAX_VIDEO_BYTES,
   MAX_VIDEO_MB,
   MAX_VIDEO_SECONDS,
   normalizeClipLength,
   normalizeExportLength,
+  projectedTotalBytes,
   readyCount,
   sanitizeCaption,
-  totalBytes
+  totalBytes,
+  validateBatchSelection,
+  validateVideoFile,
+  videoPositionLabels
 } from '../public/app-core.js';
 
 test('clamp honors NaN, min, and max', () => {
@@ -134,6 +141,62 @@ test('readyCount / isReady / totalBytes operate on slot array', () => {
   assert.equal(totalBytes(all), 5 * 1024 * 1024);
 });
 
+test('validateVideoFile aligns browser selection with the renderer contract', () => {
+  assert.deepEqual(ALLOWED_VIDEO_EXTENSIONS, ['.mov', '.mp4', '.m4v']);
+  assert.deepEqual(videoPositionLabels, ['上方', '中间', '下方']);
+  assert.equal(validateVideoFile({ name: 'clip.MOV', size: 1024 }, 1), null);
+
+  const typeIssue = validateVideoFile({ name: 'clip.webm', size: 1024, type: 'video/webm' }, 1);
+  assert.equal(typeIssue.code, 'type');
+  assert.equal(typeIssue.index, 1);
+  assert.match(typeIssue.message, /中间视频格式不支持/);
+
+  const sizeIssue = validateVideoFile({ name: 'clip.mp4', size: MAX_VIDEO_BYTES + 1 }, 2);
+  assert.equal(sizeIssue.code, 'size');
+  assert.equal(sizeIssue.index, 2);
+  assert.match(sizeIssue.message, /下方视频/);
+});
+
+test('validateBatchSelection rejects the whole selection before replacement', () => {
+  const valid = ['01.mp4', '02.mov', '03.m4v'].map(name => ({ name, size: 2 * 1024 * 1024 }));
+  assert.equal(validateBatchSelection(valid), null);
+
+  const countIssue = validateBatchSelection(valid.slice(0, 2));
+  assert.equal(countIssue.code, 'count');
+  assert.match(countIssue.message, /原素材未更改/);
+
+  const typeIssue = validateBatchSelection([valid[0], { name: '02.webm', size: 1024 }, valid[2]]);
+  assert.equal(typeIssue.code, 'type');
+  assert.equal(typeIssue.index, 1);
+
+  const totalIssue = validateBatchSelection(valid, 5 * 1024 * 1024);
+  assert.equal(totalIssue.code, 'total');
+  assert.match(totalIssue.message, /超过总量 5MB/);
+});
+
+test('projectedTotalBytes and getExportReadiness guard single-slot replacements', () => {
+  const slots = [1, 2, 3].map(size => ({
+    file: { name: `${size}.mp4`, size: size * 1024 * 1024 },
+    video: { duration: 5 },
+    duration: 5
+  }));
+  assert.equal(projectedTotalBytes(slots, 1, { size: 8 * 1024 * 1024 }), 12 * 1024 * 1024);
+
+  const ready = getExportReadiness(slots);
+  assert.equal(ready.allowed, true);
+  assert.equal(ready.code, 'ready');
+
+  const oversized = getExportReadiness(slots, 5 * 1024 * 1024);
+  assert.equal(oversized.allowed, false);
+  assert.equal(oversized.code, 'total');
+  assert.match(oversized.reason, /替换较小的视频/);
+
+  const partial = getExportReadiness(slots.slice(0, 2));
+  assert.equal(partial.allowed, false);
+  assert.equal(partial.code, 'missing');
+  assert.match(partial.reason, /还需选择 1 个视频/);
+});
+
 test('buildSlotMeta mirrors the previous inline format', () => {
   const empty = buildSlotMeta({ slot: { file: null, video: null, duration: 0 }, index: 0 });
   assert.equal(empty.name, '未选择');
@@ -183,6 +246,7 @@ test('buildChecklistText maps mode to text and flags', () => {
   const oversize = buildChecklistText({ ready: true, withinTotal: false, previewSeen: true, exportMode: 'video' });
   assert.equal(oversize.duration.done, false);
   assert.equal(oversize.duration.warn, true);
+  assert.equal(oversize.duration.text, `素材总量超过 ${MAX_TOTAL_MB}MB`);
 
   const image = buildChecklistText({ ready: true, withinTotal: true, previewSeen: false, exportMode: 'image' });
   assert.equal(image.preview.done, true); // image mode is always exportable

@@ -3,6 +3,8 @@
 // bundler. Functions here must not touch DOM, Canvas, fetch, XHR, or timers.
 
 export const labels = ['上', '中', '下'];
+export const videoPositionLabels = ['上方', '中间', '下方'];
+export const ALLOWED_VIDEO_EXTENSIONS = ['.mov', '.mp4', '.m4v'];
 
 export const MAX_VIDEO_MB = 120;
 export const MAX_VIDEO_BYTES = MAX_VIDEO_MB * 1024 * 1024;
@@ -100,6 +102,87 @@ export function totalBytes(slots) {
   return slots.reduce((sum, slot) => sum + (slot?.file?.size || 0), 0);
 }
 
+export function validateVideoFile(file, index = -1) {
+  const position = videoPositionLabels[index] || '';
+  const label = `${position}视频`;
+  if (!file) {
+    return { code: 'missing', index, message: `请选择${label}。` };
+  }
+
+  const name = String(file.name || '');
+  const extension = name.includes('.') ? name.slice(name.lastIndexOf('.')).toLowerCase() : '';
+  if (!ALLOWED_VIDEO_EXTENSIONS.includes(extension)) {
+    return { code: 'type', index, message: `${label}格式不支持，请选择 MOV、MP4 或 M4V。` };
+  }
+
+  const size = Math.max(0, Number(file.size) || 0);
+  if (size > MAX_VIDEO_BYTES) {
+    return {
+      code: 'size',
+      index,
+      message: `${label}为 ${formatSize(size)}，超过单个视频 ${MAX_VIDEO_MB}MB 上限。`
+    };
+  }
+
+  return null;
+}
+
+export function validateBatchSelection(files, maxTotalBytes = MAX_TOTAL_BYTES) {
+  const selected = Array.from(files || []);
+  if (selected.length !== 3) {
+    return {
+      code: 'count',
+      message: `请一次选择 3 个视频，本次选择了 ${selected.length} 个，原素材未更改。`
+    };
+  }
+
+  for (let index = 0; index < selected.length; index += 1) {
+    const issue = validateVideoFile(selected[index], index);
+    if (issue) return issue;
+  }
+
+  const total = selected.reduce((sum, file) => sum + (Number(file?.size) || 0), 0);
+  if (total > maxTotalBytes) {
+    const maxTotalMb = Math.round(maxTotalBytes / MB);
+    return {
+      code: 'total',
+      message: `3 个视频合计 ${formatSize(total)}，超过总量 ${maxTotalMb}MB 上限，原素材未更改。`
+    };
+  }
+
+  return null;
+}
+
+export function projectedTotalBytes(slots, index, nextFile) {
+  return (Array.isArray(slots) ? slots : []).reduce((sum, slot, slotIndex) => {
+    const file = slotIndex === index ? nextFile : slot?.file;
+    return sum + (Number(file?.size) || 0);
+  }, 0);
+}
+
+export function getExportReadiness(slots, maxTotalBytes = MAX_TOTAL_BYTES) {
+  const count = readyCount(slots);
+  const total = totalBytes(slots);
+  if (count < 3) {
+    return {
+      allowed: false,
+      code: 'missing',
+      reason: count ? `还需选择 ${3 - count} 个视频才能导出。` : '请选择上、中、下 3 个视频。',
+      total
+    };
+  }
+  if (total > maxTotalBytes) {
+    const maxTotalMb = Math.round(maxTotalBytes / MB);
+    return {
+      allowed: false,
+      code: 'total',
+      reason: `素材合计 ${formatSize(total)}，超过 ${maxTotalMb}MB 上限，请替换较小的视频。`,
+      total
+    };
+  }
+  return { allowed: true, code: 'ready', reason: '', total };
+}
+
 export function buildSlotMeta({ slot, index }) {
   const ready = Boolean(slot && slot.file && slot.duration);
   return {
@@ -134,7 +217,9 @@ export function buildChecklistText({ ready, withinTotal, previewSeen, exportMode
     duration: {
       done: ready && withinTotal,
       warn: !withinTotal,
-      text: exportMode === 'image' ? '图片尺寸符合导出要求' : '时长与体积符合限制'
+      text: !withinTotal
+        ? `素材总量超过 ${MAX_TOTAL_MB}MB`
+        : (exportMode === 'image' ? '图片尺寸符合导出要求' : '时长与体积符合限制')
     },
     preview: {
       done: ready && (previewSeen || exportMode === 'image'),

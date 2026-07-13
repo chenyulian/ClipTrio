@@ -73,16 +73,16 @@ Do not silently change these semantics.
 
 Completed:
 
+- Phase 1: dependency controls, atomic source replacement, persistent inline validation, export readiness, and failure-state preservation hardened.
 - Phase 2: frontend pure helpers extracted to `public/app-core.js` with tests.
 - Phase 3 core implementation: backend validation, subprocess timeout, bounded output, cleanup paths, and error mapping hardened.
 - Phase 4: deterministic MP4 fixtures and Docker direct/local proxy smoke tests added.
 
 Current priorities:
 
-1. Finish the remaining Phase 1 frontend interaction reliability work.
-2. Finish Phase 3 route-level coverage for real multipart requests, proxy failures, disconnect cleanup, and static path traversal.
-3. Continue Phase 5 frontend structure cleanup without adding a build system.
-4. Complete Phase 6 Canvas PNG, preview, and MP4 consistency work, including automated PNG checks.
+1. Finish Phase 3 route-level coverage for real multipart requests, proxy failures, disconnect cleanup, and static path traversal.
+2. Continue Phase 5 frontend structure cleanup without adding a build system.
+3. Complete Phase 6 Canvas PNG, preview, and MP4 consistency work, including automated PNG checks.
 
 Do not repeat completed phases unless a regression or a direct task requires it.
 
@@ -364,10 +364,8 @@ https://github.com/chenyulian/ClipTrio.git
 For an agent continuing V1 hardening:
 
 1. Read `V1_CODE_OPTIMIZATION_PLAN.md` and confirm the current phase status.
-2. Finish atomic single-slot and three-file replacement so invalid new files never discard valid existing selections.
-3. Enforce total upload readiness in the export action, with a nearby explanation when export is disabled.
-4. Add route-level tests for real multipart requests, proxy failures, disconnect cleanup, and path traversal behavior.
-5. Extract browser orchestration from `public/index.html` into `public/app.js` in small verified steps.
-6. Centralize preview/PNG/MP4 layout constants and automate Canvas PNG consistency checks.
+2. Add route-level tests for real multipart requests, proxy failures, disconnect cleanup, and path traversal behavior.
+3. Extract browser orchestration from `public/index.html` into `public/app.js` in small verified steps.
+4. Centralize preview/PNG/MP4 layout constants and automate Canvas PNG consistency checks.
 
 Avoid a full rewrite. V1 benefits more from tested boundaries and predictable failure recovery than from a new framework.

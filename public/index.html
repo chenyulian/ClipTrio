@@ -223,11 +223,14 @@
     }
 
     .source-caption {
+      min-height: 15px;
       color: var(--soft);
       font-size: 11px;
       line-height: 1.35;
       text-align: center;
     }
+
+    .source-caption.error { color: var(--danger); }
 
     .slots, .caption-grid { display: grid; gap: 7px; }
 
@@ -250,6 +253,14 @@
       background: #fbf9ff;
       box-shadow: inset 3px 0 0 var(--accent);
     }
+
+    .slot.invalid {
+      border-color: #e2a49e;
+      background: #fff9f8;
+      box-shadow: inset 3px 0 0 var(--danger);
+    }
+
+    .slot.invalid .slot-detail { color: var(--danger); }
 
     .slot:hover { border-color: #bdb2ad; }
     .slot.dragging { border-color: var(--accent); background: var(--accent-soft); }
@@ -643,6 +654,16 @@
     .actions { display: grid; gap: 9px; margin-top: 12px; }
     .actions button { min-height: 42px; }
 
+    .export-block-reason {
+      min-height: 16px;
+      margin-top: 8px;
+      color: var(--muted);
+      font-size: 11px;
+      line-height: 1.4;
+    }
+
+    .export-block-reason.error { color: var(--danger); }
+
     .export-section {
       position: sticky;
       bottom: 0;
@@ -769,7 +790,7 @@
             </div>
             <div class="source-actions">
               <button class="source-button" id="multiPickButton" type="button">＋ 添加 3 个视频</button>
-              <div class="source-caption">拖入 3 个文件，或在对应槽位单独替换</div>
+              <div class="source-caption" id="sourceFeedback" aria-live="polite">拖入 3 个文件，或在对应槽位单独替换</div>
             </div>
           </div>
         </div>
@@ -895,6 +916,7 @@
               <div class="progress-bar" id="progressBar"></div>
             </div>
           </div>
+          <div class="export-block-reason error" id="exportBlockReason">请选择上、中、下 3 个视频。</div>
           <div class="actions">
             <button id="download" class="primary" type="button">↓ 导出视频</button>
           </div>
@@ -910,29 +932,31 @@
       buildLoadHint,
       buildSlotMeta,
       clamp,
-      formatSize,
       formatTime,
-      formatVideoMeta,
       getSegmentEnd,
       getSegmentWindow,
       getStart as getStartCore,
+      getExportReadiness,
       isReady as isReadyCore,
       labels,
       MAX_TOTAL_BYTES,
-      MAX_TOTAL_MB,
-      MAX_VIDEO_BYTES,
-      MAX_VIDEO_MB,
       MAX_VIDEO_SECONDS,
       normalizeClipLength,
       normalizeExportLength,
+      projectedTotalBytes,
       readyCount as readyCountCore,
       sanitizeCaption,
-      totalBytes as totalBytesCore
+      totalBytes as totalBytesCore,
+      validateBatchSelection,
+      validateVideoFile,
+      videoPositionLabels
     } from './app-core.js';
 
     const canvas = document.getElementById('canvas');
     const ctx = canvas.getContext('2d');
     const statusEl = document.getElementById('status');
+    const sourceFeedback = document.getElementById('sourceFeedback');
+    const exportBlockReason = document.getElementById('exportBlockReason');
     const progressEl = document.getElementById('progress');
     const progressBar = document.getElementById('progressBar');
     const factSource = document.getElementById('factSource');
@@ -957,6 +981,7 @@
     const nameEls = ['nameA', 'nameB', 'nameC'].map(id => document.getElementById(id));
     const detailEls = ['detailA', 'detailB', 'detailC'].map(id => document.getElementById(id));
     const slotEls = ['slotA', 'slotB', 'slotC'].map(id => document.getElementById(id));
+    const pickButtons = slotEls.map(slot => slot.querySelector('.pick'));
     const startSliders = ['startA', 'startB', 'startC'].map(id => document.getElementById(id));
     const startValues = ['startAValue', 'startBValue', 'startCValue'].map(id => document.getElementById(id));
     const endValues = ['endAValue', 'endBValue', 'endCValue'].map(id => document.getElementById(id));
@@ -978,6 +1003,10 @@
     let previewSeen = false;
     let rafId = 0;
     let exportMode = 'video';
+    let processing = false;
+    let sourceLoading = false;
+    let sourceFeedbackMessage = '';
+    const slotErrors = ['', '', ''];
 
     function setStatus(text, state = 'idle') {
       statusEl.textContent = text;
@@ -991,14 +1020,13 @@
     }
 
     function setProcessing(isProcessing) {
-      downloadBtn.disabled = isProcessing || !isReady();
-      playBtn.disabled = isProcessing || !isReady();
-      previewProgress.disabled = isProcessing || !isReady();
-      exportModeVideo.disabled = isProcessing;
-      exportModeImage.disabled = isProcessing;
-      multiFiles.disabled = isProcessing;
-      fileInputs.forEach(input => { input.disabled = isProcessing; });
-      syncSegmentAvailability(isProcessing);
+      processing = isProcessing;
+      syncActionAvailability();
+    }
+
+    function setSourceLoading(isLoading) {
+      sourceLoading = isLoading;
+      syncActionAvailability();
     }
 
     function getClipLength() {
@@ -1019,6 +1047,39 @@
 
     function totalBytes() {
       return totalBytesCore(slots);
+    }
+
+    function exportReadiness() {
+      return getExportReadiness(slots);
+    }
+
+    function syncSourceFeedback() {
+      const readiness = exportReadiness();
+      const totalMessage = readiness.code === 'total' ? readiness.reason : '';
+      const message = sourceFeedbackMessage || totalMessage || '拖入 3 个文件，或在对应槽位单独替换';
+      sourceFeedback.textContent = message;
+      sourceFeedback.classList.toggle('error', Boolean(sourceFeedbackMessage || totalMessage));
+    }
+
+    function syncActionAvailability() {
+      const busy = processing || sourceLoading;
+      const ready = isReady();
+      const readiness = exportReadiness();
+      downloadBtn.disabled = busy || !readiness.allowed;
+      playBtn.disabled = busy || !ready;
+      previewProgress.disabled = busy || !ready;
+      exportModeVideo.disabled = busy;
+      exportModeImage.disabled = busy;
+      multiFiles.disabled = busy;
+      multiPickButton.disabled = busy;
+      fileInputs.forEach(input => { input.disabled = busy; });
+      pickButtons.forEach(button => { button.disabled = busy; });
+      exportBlockReason.textContent = busy
+        ? (sourceLoading ? '正在验证视频，当前素材会保留到验证完成。' : '正在处理，请稍候。')
+        : readiness.reason;
+      exportBlockReason.classList.toggle('error', !busy && !readiness.allowed);
+      syncSegmentAvailability(busy);
+      syncSourceFeedback();
     }
 
     function syncSegmentAvailability(isProcessing = false) {
@@ -1052,6 +1113,7 @@
       checks.files.classList.toggle('done', ready);
       checks.duration.classList.toggle('done', checklist.duration.done);
       checks.duration.classList.toggle('warn', checklist.duration.warn);
+      checks.duration.querySelector('span:last-child').textContent = checklist.duration.text;
       checks.preview.classList.toggle('done', checklist.preview.done);
     }
 
@@ -1074,17 +1136,16 @@
       slots.forEach((slot, index) => {
         const meta = buildSlotMeta({ slot, index });
         slotEls[index].classList.toggle('ready', meta.isReady);
+        slotEls[index].classList.toggle('invalid', Boolean(slotErrors[index]));
         nameEls[index].textContent = meta.name;
-        detailEls[index].textContent = meta.detail;
+        detailEls[index].textContent = slotErrors[index] || meta.detail;
+        detailEls[index].title = slotErrors[index] || meta.detail;
         const pickButton = slotEls[index].querySelector('.pick');
         if (pickButton) pickButton.childNodes[0].nodeValue = meta.pickLabel;
       });
 
       multiPickButton.textContent = hint.multiPick;
-      downloadBtn.disabled = !isReady();
-      playBtn.disabled = !isReady();
-      previewProgress.disabled = !isReady();
-      syncSegmentAvailability();
+      syncActionAvailability();
       updateChecks();
       syncSegmentWindows();
     }
@@ -1306,71 +1367,222 @@
       updateChecks();
     }
 
-    async function loadFileIntoSlot(index, file) {
-      if (!file) return;
-      if (!file.type.startsWith('video/') && !/\.(mov|mp4|m4v)$/i.test(file.name)) {
-        setStatus('这里只接受 MOV/MP4/M4V 视频。', 'error');
-        return;
+    function sourceLoadError(message, slotIndex = -1) {
+      const error = new Error(message);
+      error.slotIndex = slotIndex;
+      return error;
+    }
+
+    function releaseSlot(slot) {
+      if (!slot) return;
+      if (slot.video) {
+        slot.video.pause();
+        slot.video.remove();
       }
-      if (file.size > MAX_VIDEO_BYTES) {
-        setStatus(`${labels[index]}方视频太大：${formatSize(file.size)}，单个视频上限 ${MAX_VIDEO_MB}MB。`, 'error');
-        return;
-      }
-      const wasPlaying = playing;
-      pausePreview('正在读取视频...');
-      const oldSlot = slots[index];
-      if (oldSlot.url) URL.revokeObjectURL(oldSlot.url);
-      if (oldSlot.video) oldSlot.video.remove();
+      if (slot.url) URL.revokeObjectURL(slot.url);
+    }
+
+    async function prepareVideoSlot(index, file) {
+      const issue = validateVideoFile(file, index);
+      if (issue) throw sourceLoadError(issue.message, index);
 
       const url = URL.createObjectURL(file);
       const video = document.createElement('video');
+      const candidate = { file, url, video, duration: 0 };
       video.src = url;
       video.muted = true;
       video.playsInline = true;
-      video.preload = 'auto';
+      video.preload = 'metadata';
       document.body.appendChild(video);
 
-      await new Promise((resolve, reject) => {
-        video.onloadedmetadata = resolve;
-        video.onerror = () => reject(new Error('视频无法读取，请换一个文件试试。'));
-        video.load();
-      });
+      try {
+        await new Promise((resolve, reject) => {
+          const timeoutId = setTimeout(() => finish(() => reject(sourceLoadError(
+            `${videoPositionLabels[index]}视频读取超时，请换一个文件试试。`, index
+          ))), 15000);
+          const cleanup = () => {
+            clearTimeout(timeoutId);
+            video.removeEventListener('loadedmetadata', loaded);
+            video.removeEventListener('error', failed);
+          };
+          const finish = callback => {
+            cleanup();
+            callback();
+          };
+          const loaded = () => finish(resolve);
+          const failed = () => finish(() => reject(sourceLoadError(
+            `${videoPositionLabels[index]}视频无法读取，请确认文件未损坏。`, index
+          )));
+          video.addEventListener('loadedmetadata', loaded, { once: true });
+          video.addEventListener('error', failed, { once: true });
+          video.load();
+        });
 
-      if ((video.duration || 0) > MAX_VIDEO_SECONDS) {
-        URL.revokeObjectURL(url);
-        video.remove();
-        setStatus(`${labels[index]}方视频太长：${video.duration.toFixed(1)} 秒，单个视频上限 ${MAX_VIDEO_SECONDS} 秒。`, 'error');
-        return;
+        const duration = Number(video.duration);
+        if (!Number.isFinite(duration) || duration <= 0) {
+          throw sourceLoadError(`${videoPositionLabels[index]}视频时长无法识别，请换一个文件试试。`, index);
+        }
+        if (duration > MAX_VIDEO_SECONDS) {
+          throw sourceLoadError(
+            `${videoPositionLabels[index]}视频为 ${duration.toFixed(1)} 秒，超过 ${MAX_VIDEO_SECONDS} 秒上限。`,
+            index
+          );
+        }
+
+        candidate.duration = duration;
+        video.preload = 'auto';
+        return candidate;
+      } catch (error) {
+        releaseSlot(candidate);
+        throw error;
+      }
+    }
+
+    async function restorePlayback(wasPlaying) {
+      if (!wasPlaying || !isReady()) return;
+      try {
+        await startPreview();
+      } catch {
+        playing = false;
+      }
+    }
+
+    async function loadFileIntoSlot(index, file) {
+      if (!file || sourceLoading || processing) return false;
+      const issue = validateVideoFile(file, index);
+      if (issue) {
+        slotErrors[index] = issue.message;
+        sourceFeedbackMessage = '替换未执行，原素材和编辑设置均已保留。';
+        updateLoadHint();
+        setStatus(issue.message, 'error');
+        return false;
       }
 
-      slots[index] = { file, url, video, duration: video.duration || 0 };
-      previewSeen = false;
-      updateLoadHint();
-      await resetSegments();
-      setStatus(`已载入${['上方', '中间', '下方'][index]}视频。`);
-      if (wasPlaying && isReady()) startPreview();
+      const wasPlaying = playing;
+      pausePreview('正在验证视频，原素材会暂时保留...');
+      setSourceLoading(true);
+      let candidate = null;
+      let succeeded = false;
+      let finalMessage = '';
+      let finalState = 'idle';
+
+      try {
+        candidate = await prepareVideoSlot(index, file);
+        const previousSlots = slots;
+        const nextSlots = slots.slice();
+        nextSlots[index] = candidate;
+        const projectedTotal = projectedTotalBytes(slots, index, file);
+
+        slots = nextSlots;
+        try {
+          await resetSegments();
+        } catch (error) {
+          slots = previousSlots;
+          await resetSegments().catch(() => {});
+          throw sourceLoadError(`${videoPositionLabels[index]}视频无法定位片段，原素材未更改。`, index);
+        }
+
+        releaseSlot(previousSlots[index]);
+        candidate = null;
+        slotErrors[index] = '';
+        sourceFeedbackMessage = '';
+        previewSeen = false;
+        updateLoadHint();
+        succeeded = true;
+        if (projectedTotal > MAX_TOTAL_BYTES) {
+          finalMessage = getExportReadiness(slots).reason;
+          finalState = 'error';
+        } else {
+          finalMessage = `已载入${videoPositionLabels[index]}视频。`;
+        }
+      } catch (error) {
+        if (candidate) releaseSlot(candidate);
+        const slotIndex = Number.isInteger(error.slotIndex) ? error.slotIndex : index;
+        slotErrors[slotIndex] = error.message || '视频读取失败，请重试。';
+        sourceFeedbackMessage = '替换失败，原素材和编辑设置均已保留。';
+        updateLoadHint();
+        finalMessage = slotErrors[slotIndex];
+        finalState = 'error';
+      } finally {
+        setSourceLoading(false);
+        await restorePlayback(wasPlaying);
+        setStatus(finalMessage, finalState);
+      }
+
+      return succeeded;
     }
 
     async function loadMultiple(files) {
-      const picked = Array.from(files).filter(file => file.type.startsWith('video/') || /\.(mov|mp4|m4v)$/i.test(file.name));
-      if (picked.length < 3) {
-        setStatus('请一次选择至少 3 个 MOV/MP4 视频。', 'error');
-        return;
+      if (sourceLoading || processing) return false;
+      const selected = Array.from(files || []);
+      selected.sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: 'base' }));
+      const issue = validateBatchSelection(selected);
+      if (issue) {
+        if (Number.isInteger(issue.index) && issue.index >= 0) slotErrors[issue.index] = issue.message;
+        sourceFeedbackMessage = issue.message;
+        updateLoadHint();
+        setStatus(issue.message, 'error');
+        return false;
       }
-      picked.sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: 'base' }));
-      const selected = picked.slice(0, 3);
-      const bytes = selected.reduce((sum, file) => sum + file.size, 0);
-      if (bytes > MAX_TOTAL_BYTES) {
-        setStatus(`3 个视频合计 ${formatSize(bytes)}，总上限 ${MAX_TOTAL_MB}MB。`, 'error');
-        return;
+
+      const wasPlaying = playing;
+      pausePreview('正在验证 3 个视频，当前素材会暂时保留...');
+      setSourceLoading(true);
+      let candidates = [];
+      let succeeded = false;
+      let finalMessage = '';
+      let finalState = 'idle';
+
+      try {
+        const results = await Promise.allSettled(selected.map((file, index) => prepareVideoSlot(index, file)));
+        candidates = results.filter(result => result.status === 'fulfilled').map(result => result.value);
+        const failed = results.find(result => result.status === 'rejected');
+        if (failed) {
+          candidates.forEach(releaseSlot);
+          candidates = [];
+          throw failed.reason;
+        }
+
+        const previousSlots = slots;
+        slots = candidates;
+        try {
+          await resetSegments();
+        } catch {
+          slots = previousSlots;
+          await resetSegments().catch(() => {});
+          throw sourceLoadError('新视频无法定位片段，原有 3 个素材未更改。');
+        }
+
+        previousSlots.forEach(releaseSlot);
+        candidates = [];
+        slotErrors.fill('');
+        sourceFeedbackMessage = '';
+        previewSeen = false;
+        updateLoadHint();
+        succeeded = true;
+        finalMessage = '三个视频已验证，并按文件名顺序放入上、中、下。';
+      } catch (error) {
+        candidates.forEach(releaseSlot);
+        const slotIndex = Number.isInteger(error.slotIndex) ? error.slotIndex : -1;
+        if (slotIndex >= 0) slotErrors[slotIndex] = error.message;
+        sourceFeedbackMessage = `未替换任何素材：${error.message || '视频读取失败，请重试。'}`;
+        updateLoadHint();
+        finalMessage = sourceFeedbackMessage;
+        finalState = 'error';
+      } finally {
+        setSourceLoading(false);
+        await restorePlayback(wasPlaying);
+        setStatus(finalMessage, finalState);
       }
-      for (let i = 0; i < 3; i += 1) await loadFileIntoSlot(i, selected[i]);
-      setStatus('三个视频已按文件名顺序放入上、中、下。');
+
+      return succeeded;
     }
 
     async function exportMp4() {
-      if (!isReady()) {
-        setStatus('先把上、中、下三个视频都选好。', 'error');
+      const readiness = exportReadiness();
+      if (!readiness.allowed) {
+        setStatus(readiness.reason, 'error');
+        syncActionAvailability();
         return;
       }
       const wasPlaying = playing;
@@ -1446,8 +1658,10 @@
     }
 
     async function exportPng() {
-      if (!isReady()) {
-        setStatus('先把上、中、下三个视频都选好。', 'error');
+      const readiness = exportReadiness();
+      if (!readiness.allowed) {
+        setStatus(readiness.reason, 'error');
+        syncActionAvailability();
         return;
       }
       if (playing) pausePreview('正在生成三拼图片...');
@@ -1473,9 +1687,17 @@
       }
     }
 
-    multiFiles.addEventListener('change', event => loadMultiple(event.target.files).catch(error => setStatus(error.message, 'error')));
+    multiFiles.addEventListener('change', event => {
+      const files = Array.from(event.target.files || []);
+      event.target.value = '';
+      loadMultiple(files).catch(error => setStatus(error.message, 'error'));
+    });
     multiPickButton.addEventListener('click', () => multiFiles.click());
-    fileInputs.forEach((input, index) => input.addEventListener('change', event => loadFileIntoSlot(index, event.target.files[0]).catch(error => setStatus(error.message, 'error'))));
+    fileInputs.forEach((input, index) => input.addEventListener('change', event => {
+      const file = event.target.files?.[0];
+      event.target.value = '';
+      loadFileIntoSlot(index, file).catch(error => setStatus(error.message, 'error'));
+    }));
     startSliders.forEach(slider => slider.addEventListener('input', () => {
       previewSeen = false;
       syncLabels();
@@ -1550,14 +1772,16 @@
       }));
     });
     dropZone.addEventListener('drop', event => {
-      if (event.dataTransfer?.files?.length) {
+      if (!sourceLoading && !processing && event.dataTransfer?.files?.length) {
         loadMultiple(event.dataTransfer.files).catch(error => setStatus(error.message, 'error'));
       }
     });
     slotEls.forEach((slotEl, index) => {
       slotEl.addEventListener('drop', event => {
         const file = event.dataTransfer?.files?.[0];
-        if (file) loadFileIntoSlot(index, file).catch(error => setStatus(error.message, 'error'));
+        if (!sourceLoading && !processing && file) {
+          loadFileIntoSlot(index, file).catch(error => setStatus(error.message, 'error'));
+        }
       });
     });
 
