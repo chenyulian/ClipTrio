@@ -97,6 +97,10 @@ export function isReady(slots) {
   return readyCount(slots) === 3;
 }
 
+export function hasRenderableSlot(slots) {
+  return readyCount(slots) > 0;
+}
+
 export function totalBytes(slots) {
   if (!Array.isArray(slots)) return 0;
   return slots.reduce((sum, slot) => sum + (slot?.file?.size || 0), 0);
@@ -210,7 +214,8 @@ export function buildSlotMeta({ slot, index }) {
 }
 
 export function buildLoadHint({
-  ready, total, maxTotalMb = MAX_TOTAL_MB, maxVideoMb = MAX_VIDEO_MB, exportMode, exportLength
+  ready, total, maxTotalMb = MAX_TOTAL_MB, maxVideoMb = MAX_VIDEO_MB, exportMode, exportLength,
+  resolution = 1080, frameRate = 30
 }) {
   const count = ready;
   const bytes = total;
@@ -219,7 +224,7 @@ export function buildLoadHint({
     topHint: `${count} / 3 素材 · ${count === 3 ? '可以预览' : '待选择'}`,
     source: `${count}/3 视频`,
     output: exportMode === 'image' ? '三拼图片 PNG' : `${exportLength} 秒 MP4`,
-    outputMeta: exportMode === 'image' ? '1080 × 1920 / 当前预览帧' : '1080 × 1920 / 30fps',
+    outputMeta: `${resolution} × ${resolution === 720 ? 1280 : 1920} / ${exportMode === 'image' ? '当前预览帧' : `${frameRate}fps`}`,
     limit: bytes ? `${formatSize(bytes)} / ${maxTotalMb}MB` : `≤ ${maxVideoMb}MB`,
     multiPick: count ? '↻ 重新选择 3 个视频' : '＋ 添加 3 个视频'
   };

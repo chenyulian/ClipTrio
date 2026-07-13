@@ -32,6 +32,8 @@ test('normalizeRenderFields applies defaults, limits, and caption indexes', () =
   const fields = normalizeRenderFields({
     exportLength: '20',
     clipLength: '0.1',
+    resolution: '720',
+    frameRate: '60',
     start0: '1.25',
     start1: 'bad',
     start2: '-5',
@@ -42,9 +44,17 @@ test('normalizeRenderFields applies defaults, limits, and caption indexes', () =
 
   assert.equal(fields.exportLength, 10);
   assert.equal(fields.clipLength, 0.3);
+  assert.equal(fields.resolution, 720);
+  assert.equal(fields.frameRate, 60);
   assert.deepEqual(fields.starts, [1.25, 0, 0]);
   assert.deepEqual(fields.captions, ['上层', '', '下层']);
   assert.deepEqual(fields.captionIndexes, [0, 2]);
+});
+
+test('normalizeRenderFields rejects unsupported output settings', () => {
+  const fields = normalizeRenderFields({ resolution: '2160', frameRate: '24' });
+  assert.equal(fields.resolution, 1080);
+  assert.equal(fields.frameRate, 30);
 });
 
 test('buildSegmentArgs keeps ffmpeg invocation as an argument array', () => {
@@ -103,4 +113,25 @@ test('buildFinalRenderArgs includes caption mask and drawtext filters', () => {
   assert.match(filterComplex, /scale=1080:640/);
   assert.match(filterComplex, /crop=1080:640/);
   assert.match(filterComplex, /fps=30/);
+});
+
+test('buildFinalRenderArgs applies 720x1280 at 60fps without padded output', () => {
+  const args = buildFinalRenderArgs({
+    segmentPaths: ['a.mp4', 'b.mp4', 'c.mp4'],
+    exportLength: 5,
+    captions: ['上层', '', ''],
+    captionIndexes: [0],
+    maskPath: 'mask.pgm',
+    outputPath: 'out.mp4',
+    resolution: 720,
+    frameRate: 60
+  });
+  const filterComplex = args[args.indexOf('-filter_complex') + 1];
+
+  assert.match(filterComplex, /scale=720:428/);
+  assert.match(filterComplex, /vstack=inputs=3,crop=720:1280/);
+  assert.match(filterComplex, /fps=60/);
+  assert.match(filterComplex, /fontsize=23/);
+  assert.equal(args[args.indexOf('-r') + 1], '60');
+  assert.equal(args[args.indexOf('-level') + 1], '5.1');
 });

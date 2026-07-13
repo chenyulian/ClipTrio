@@ -579,15 +579,19 @@
       padding: 2px;
     }
 
-    .segmented span {
+    .segmented button {
       min-height: 28px;
       display: grid;
       place-items: center;
+      border: 0;
       border-radius: 5px;
+      background: transparent;
       color: var(--soft);
+      font: inherit;
+      padding: 0 4px;
     }
 
-    .segmented span.active {
+    .segmented button.active {
       background: var(--accent-soft);
       color: var(--accent-dark);
       font-weight: 700;
@@ -877,11 +881,17 @@
             </div>
             <div class="setting-row">
               <span>分辨率</span>
-              <div class="segmented"><span class="active">1080p</span><span>720p</span></div>
+              <div class="segmented" role="group" aria-label="导出分辨率">
+                <button class="active" type="button" data-resolution="1080" aria-pressed="true">1080 × 1920</button>
+                <button type="button" data-resolution="720" aria-pressed="false">720 × 1280</button>
+              </div>
             </div>
             <div class="setting-row mode-dependent" id="frameRateRow">
               <span>帧率</span>
-              <div class="segmented"><span class="active">30fps</span><span>60fps</span></div>
+              <div class="segmented" role="group" aria-label="视频导出帧率">
+                <button class="active" type="button" data-frame-rate="30" aria-pressed="true">30fps</button>
+                <button type="button" data-frame-rate="60" aria-pressed="false">60fps</button>
+              </div>
             </div>
             <div class="setting-row">
               <span>编码</span>

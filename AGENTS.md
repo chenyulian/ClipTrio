@@ -15,18 +15,19 @@ The core workflow must remain:
 1. Select or drag three videos into the top, middle, and bottom slots.
 2. Select a segment start and loop length for each video.
 3. Add an optional caption to each segment.
-4. Preview the combined 1080 x 1920 result.
+4. Preview the combined vertical result at the selected export resolution.
 5. Choose an export mode.
 6. Export either an H.264 MP4 or the current preview frame as a PNG triptych.
 
 Current output behavior:
 
-- Three equal 1080 x 640 sections.
+- Two output presets: 1080 x 1920 and 720 x 1280.
+- Three equal-height sections (subject to final pixel rasterization at 720 x 1280).
 - No gaps between sections.
 - Cover-style scaling and centered cropping.
 - Optional bottom-centered captions.
-- Video: H.264 MP4, 1080 x 1920, 30fps, yuv420p, faststart.
-- Image: PNG, 1080 x 1920, based on the current preview frame.
+- Video: H.264 MP4, selected resolution, 30fps or 60fps, yuv420p, faststart.
+- Image: PNG, selected resolution, based on the current preview frame.
 
 Do not silently change these semantics.
 
@@ -253,6 +254,7 @@ Current multipart fields:
 - Files: `top`, `middle`, `bottom`
 - Timing: `start0`, `start1`, `start2`, `clipLength`, `exportLength`
 - Captions: `caption0`, `caption1`, `caption2`
+- Output: `resolution` (`1080` or `720`), `frameRate` (`30` or `60`; MP4 only)
 
 Limits:
 

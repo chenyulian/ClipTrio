@@ -7,6 +7,11 @@ export const OUTPUT_HEIGHT = 1920;
 export const SECTION_COUNT = 3;
 export const SECTION_HEIGHT = 640;
 export const OUTPUT_FPS = 30;
+export const OUTPUT_RESOLUTIONS = Object.freeze({
+  1080: Object.freeze({ width: 1080, height: 1920 }),
+  720: Object.freeze({ width: 720, height: 1280 })
+});
+export const OUTPUT_FRAME_RATES = Object.freeze([30, 60]);
 
 export const CAPTION_GRADIENT_START = 0.58;
 
@@ -28,12 +33,32 @@ export const FFMPEG_GRADIENT_BASE_OPACITY = 0.012;
 export const FFMPEG_GRADIENT_OPACITY_RANGE = 0.34;
 export const FFMPEG_GRADIENT_EXPONENT = 1.85;
 
-export function getSectionRects() {
+export function getOutputGeometry(resolution = OUTPUT_WIDTH) {
+  const preset = OUTPUT_RESOLUTIONS[Number(resolution)] || OUTPUT_RESOLUTIONS[OUTPUT_WIDTH];
+  const sectionHeight = preset.height / SECTION_COUNT;
+  return {
+    width: preset.width,
+    height: preset.height,
+    sectionHeight,
+    // FFmpeg filters require integer dimensions; yuv420p additionally needs
+    // even dimensions. The final stack is cropped back to the exact preset.
+    ffmpegSectionHeight: Math.ceil(sectionHeight / 2) * 2,
+    scale: preset.width / OUTPUT_WIDTH
+  };
+}
+
+export function normalizeOutputFrameRate(value) {
+  const frameRate = Number(value);
+  return OUTPUT_FRAME_RATES.includes(frameRate) ? frameRate : OUTPUT_FPS;
+}
+
+export function getSectionRects(resolution = OUTPUT_WIDTH) {
+  const geometry = getOutputGeometry(resolution);
   return Array.from({ length: SECTION_COUNT }, (_, index) => ({
     x: 0,
-    y: index * SECTION_HEIGHT,
-    width: OUTPUT_WIDTH,
-    height: SECTION_HEIGHT
+    y: index * geometry.sectionHeight,
+    width: geometry.width,
+    height: geometry.sectionHeight
   }));
 }
 
@@ -63,4 +88,12 @@ export function getCanvasCaptionMetrics(sectionHeight = SECTION_HEIGHT) {
 
 export function getFfmpegCaptionYExpression() {
   return `h-${FFMPEG_CAPTION_TOP_OFFSET}`;
+}
+
+export function getFfmpegCaptionMetrics(resolution = OUTPUT_WIDTH) {
+  const { scale } = getOutputGeometry(resolution);
+  return {
+    fontSize: Math.round(FFMPEG_CAPTION_FONT_SIZE * scale),
+    topOffset: Math.round(FFMPEG_CAPTION_TOP_OFFSET * scale)
+  };
 }

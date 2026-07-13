@@ -9,6 +9,7 @@ import {
   getSegmentWindow,
   getStart as getStartCore,
   getExportReadiness,
+  hasRenderableSlot,
   isReady as isReadyCore,
   labels,
   MAX_TOTAL_BYTES,
@@ -48,6 +49,8 @@ const exportModeVideo = document.getElementById('exportModeVideo');
 const exportModeImage = document.getElementById('exportModeImage');
 const exportLengthRow = document.getElementById('exportLengthRow');
 const frameRateRow = document.getElementById('frameRateRow');
+const resolutionButtons = Array.from(document.querySelectorAll('[data-resolution]'));
+const frameRateButtons = Array.from(document.querySelectorAll('[data-frame-rate]'));
 const codecValue = document.getElementById('codecValue');
 const dropZone = document.getElementById('dropZone');
 const fileInputs = ['fileA', 'fileB', 'fileC'].map(id => document.getElementById(id));
@@ -76,6 +79,8 @@ let playing = false;
 let previewSeen = false;
 let rafId = 0;
 let exportMode = 'video';
+let outputResolution = 1080;
+let outputFrameRate = 30;
 let processing = false;
 let sourceLoading = false;
 let sourceFeedbackMessage = '';
@@ -143,6 +148,8 @@ function syncActionAvailability() {
   previewProgress.disabled = busy || !ready;
   exportModeVideo.disabled = busy;
   exportModeImage.disabled = busy;
+  resolutionButtons.forEach(button => { button.disabled = busy; });
+  frameRateButtons.forEach(button => { button.disabled = busy; });
   multiFiles.disabled = busy;
   multiPickButton.disabled = busy;
   fileInputs.forEach(input => { input.disabled = busy; });
@@ -197,7 +204,9 @@ function updateLoadHint() {
     ready: count,
     total: bytes,
     exportMode,
-    exportLength: getExportLength()
+    exportLength: getExportLength(),
+    resolution: outputResolution,
+    frameRate: outputFrameRate
   });
   loadHint.textContent = hint.count;
   topLoadHint.textContent = hint.topHint;
@@ -296,14 +305,15 @@ function syncCaptionCounts() {
 }
 
 function drawPlaceholder() {
-  drawCanvasPlaceholder(canvas, ctx);
+  drawCanvasPlaceholder(canvas, ctx, outputResolution);
 }
 
 function drawFrame() {
   drawComposition(canvas, ctx, {
     slots,
     captions: captionInputs.map(input => input.value.trim()),
-    labels
+    labels,
+    resolution: outputResolution
   });
 }
 
@@ -605,6 +615,8 @@ async function exportMp4() {
   form.append('bottom', slots[2].file);
   form.append('clipLength', String(getClipLength()));
   form.append('exportLength', String(getExportLength()));
+  form.append('resolution', String(outputResolution));
+  form.append('frameRate', String(outputFrameRate));
   slots.forEach((slot, index) => form.append(`start${index}`, String(getStart(index))));
   captionInputs.forEach((input, index) => form.append(`caption${index}`, input.value.trim()));
 
@@ -675,7 +687,8 @@ async function exportPng() {
   if (playing) pausePreview('正在生成三拼图片...');
   drawFrame();
   setProcessing(true);
-  setStatus('正在生成 1080 × 1920 三拼图片...', 'busy');
+  const outputHeight = outputResolution === 720 ? 1280 : 1920;
+  setStatus(`正在生成 ${outputResolution} × ${outputHeight} 三拼图片...`, 'busy');
   try {
     const blob = await new Promise((resolve, reject) => {
       canvas.toBlob(result => result ? resolve(result) : reject(new Error('图片生成失败，请重试。')), 'image/png');
@@ -751,6 +764,29 @@ previewProgress.addEventListener('input', async () => {
 });
 exportModeVideo.addEventListener('click', () => syncExportMode('video'));
 exportModeImage.addEventListener('click', () => syncExportMode('image'));
+resolutionButtons.forEach(button => button.addEventListener('click', () => {
+  outputResolution = Number(button.dataset.resolution) === 720 ? 720 : 1080;
+  resolutionButtons.forEach(option => {
+    const active = Number(option.dataset.resolution) === outputResolution;
+    option.classList.toggle('active', active);
+    option.setAttribute('aria-pressed', String(active));
+  });
+  previewSeen = false;
+  hasRenderableSlot(slots) ? drawFrame() : drawPlaceholder();
+  updateLoadHint();
+  setStatus(`导出分辨率已设为 ${outputResolution} × ${outputResolution === 720 ? 1280 : 1920}。`);
+}));
+frameRateButtons.forEach(button => button.addEventListener('click', () => {
+  outputFrameRate = Number(button.dataset.frameRate) === 60 ? 60 : 30;
+  frameRateButtons.forEach(option => {
+    const active = Number(option.dataset.frameRate) === outputFrameRate;
+    option.classList.toggle('active', active);
+    option.setAttribute('aria-pressed', String(active));
+  });
+  previewSeen = false;
+  updateLoadHint();
+  setStatus(`视频导出帧率已设为 ${outputFrameRate}fps。`);
+}));
 downloadBtn.addEventListener('click', () => exportMode === 'image' ? exportPng() : exportMp4());
 
 function setDragState(element, isDragging) {

@@ -1,10 +1,10 @@
 import {
   FFMPEG_CAPTION_FONT_OPACITY,
-  FFMPEG_CAPTION_FONT_SIZE,
+  getFfmpegCaptionMetrics,
   getFfmpegCaptionYExpression,
-  OUTPUT_FPS,
+  getOutputGeometry,
+  normalizeOutputFrameRate,
   OUTPUT_WIDTH,
-  SECTION_HEIGHT
 } from './public/composition-core.js';
 
 export const labels = ['top', 'middle', 'bottom'];
@@ -150,23 +150,25 @@ export function ffmpegText(value) {
     .replace(/\]/g, '\\]');
 }
 
-export function buildDrawText(caption, yExpression = getFfmpegCaptionYExpression()) {
+export function buildDrawText(caption, yExpression = getFfmpegCaptionYExpression(), fontSize = 34) {
   if (!caption) return '';
   const text = ffmpegText(caption);
   const font = '/usr/share/fonts/opentype/noto/NotoSansCJK-Regular.ttc';
-  return `drawtext=fontfile=${font}:text='${text}':fontcolor=white@${FFMPEG_CAPTION_FONT_OPACITY}:fontsize=${FFMPEG_CAPTION_FONT_SIZE}:x=(w-text_w)/2:y=${yExpression}`;
+  return `drawtext=fontfile=${font}:text='${text}':fontcolor=white@${FFMPEG_CAPTION_FONT_OPACITY}:fontsize=${fontSize}:x=(w-text_w)/2:y=${yExpression}`;
 }
 
 export function normalizeRenderFields(fields = {}) {
   const exportLength = sanitizeNumber(fields.exportLength, 5, 1, maxExportSeconds);
   const clipLength = sanitizeNumber(fields.clipLength, 3, 0.3, maxClipSeconds);
+  const resolution = Number(fields.resolution) === 720 ? 720 : OUTPUT_WIDTH;
+  const frameRate = normalizeOutputFrameRate(fields.frameRate);
   const starts = labels.map((_, index) => sanitizeNumber(fields[`start${index}`], 0, 0, 9999));
   const captions = labels.map((_, index) => sanitizeCaption(fields[`caption${index}`]));
   const captionIndexes = captions
     .map((caption, index) => caption ? index : -1)
     .filter(index => index >= 0);
 
-  return { exportLength, clipLength, starts, captions, captionIndexes };
+  return { exportLength, clipLength, resolution, frameRate, starts, captions, captionIndexes };
 }
 
 export function buildSegmentArgs({ start, clipLength, inputPath, outputPath }) {
@@ -185,8 +187,11 @@ export function buildSegmentArgs({ start, clipLength, inputPath, outputPath }) {
   ];
 }
 
-export function buildFilterComplex({ exportLength, captions, captionIndexes }) {
+export function buildFilterComplex({ exportLength, captions, captionIndexes, resolution = OUTPUT_WIDTH, frameRate = 30 }) {
   const chains = [];
+  const geometry = getOutputGeometry(resolution);
+  const captionMetrics = getFfmpegCaptionMetrics(resolution);
+  const captionY = `h-${captionMetrics.topOffset}`;
 
   if (captionIndexes.length === 1) {
     chains.push(`[3:v]format=gray[m${captionIndexes[0]}]`);
@@ -195,21 +200,21 @@ export function buildFilterComplex({ exportLength, captions, captionIndexes }) {
   }
 
   labels.forEach((_, index) => {
-    chains.push(`[${index}:v]trim=duration=${exportLength},setpts=PTS-STARTPTS,scale=${OUTPUT_WIDTH}:${SECTION_HEIGHT}:force_original_aspect_ratio=increase,crop=${OUTPUT_WIDTH}:${SECTION_HEIGHT},setsar=1,fps=${OUTPUT_FPS}[base${index}]`);
+    chains.push(`[${index}:v]trim=duration=${exportLength},setpts=PTS-STARTPTS,scale=${geometry.width}:${geometry.ffmpegSectionHeight}:force_original_aspect_ratio=increase,crop=${geometry.width}:${geometry.ffmpegSectionHeight},setsar=1,fps=${frameRate}[base${index}]`);
 
     if (captions[index]) {
-      chains.push(`color=c=black:s=${OUTPUT_WIDTH}x${SECTION_HEIGHT}:d=${exportLength},format=rgba[black${index}]`);
+      chains.push(`color=c=black:s=${geometry.width}x${geometry.ffmpegSectionHeight}:d=${exportLength},format=rgba[black${index}]`);
       chains.push(`[black${index}][m${index}]alphamerge[grad${index}]`);
-      chains.push(`[base${index}][grad${index}]overlay=0:0,${buildDrawText(captions[index])}[v${index}]`);
+      chains.push(`[base${index}][grad${index}]overlay=0:0,${buildDrawText(captions[index], captionY, captionMetrics.fontSize)}[v${index}]`);
     } else {
       chains.push(`[base${index}]copy[v${index}]`);
     }
   });
 
-  return `${chains.join(';')};[v0][v1][v2]vstack=inputs=3,format=yuv420p[v]`;
+  return `${chains.join(';')};[v0][v1][v2]vstack=inputs=3,crop=${geometry.width}:${geometry.height},format=yuv420p[v]`;
 }
 
-export function buildFinalRenderArgs({ segmentPaths, exportLength, captions, captionIndexes, maskPath, outputPath }) {
+export function buildFinalRenderArgs({ segmentPaths, exportLength, captions, captionIndexes, maskPath, outputPath, resolution = OUTPUT_WIDTH, frameRate = 30 }) {
   const args = ['-y', '-hide_banner'];
 
   segmentPaths.forEach(segmentPath => {
@@ -222,15 +227,15 @@ export function buildFinalRenderArgs({ segmentPaths, exportLength, captions, cap
 
   args.push('-f', 'lavfi', '-t', String(exportLength), '-i', 'anullsrc=channel_layout=stereo:sample_rate=44100');
   args.push(
-    '-filter_complex', buildFilterComplex({ exportLength, captions, captionIndexes }),
+    '-filter_complex', buildFilterComplex({ exportLength, captions, captionIndexes, resolution, frameRate }),
     '-map', '[v]',
     '-map', `${captionIndexes.length ? 4 : 3}:a`,
     '-t', String(exportLength),
     '-c:v', 'libx264',
     '-profile:v', 'high',
-    '-level', '4.1',
+    '-level', frameRate === 60 ? '5.1' : '4.1',
     '-pix_fmt', 'yuv420p',
-    '-r', String(OUTPUT_FPS),
+    '-r', String(frameRate),
     '-crf', '18',
     '-preset', 'veryfast',
     '-c:a', 'aac',

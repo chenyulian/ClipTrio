@@ -5,6 +5,7 @@ import {
   getCanvasCaptionMetrics,
   getCoverRect,
   getFfmpegCaptionYExpression,
+  getOutputGeometry,
   getSectionRects,
   OUTPUT_HEIGHT,
   OUTPUT_WIDTH,
@@ -110,4 +111,44 @@ test('configureOutputCanvas repairs stale backing-store dimensions before export
   const canvas = { width: 720, height: 1280 };
   configureOutputCanvas(canvas);
   assert.deepEqual(canvas, { width: 1080, height: 1920 });
+});
+
+test('720 preset keeps exact output dimensions and contiguous fractional sections', () => {
+  const geometry = getOutputGeometry(720);
+  const sections = getSectionRects(720);
+  assert.deepEqual(geometry, {
+    width: 720,
+    height: 1280,
+    sectionHeight: 1280 / 3,
+    ffmpegSectionHeight: 428,
+    scale: 2 / 3
+  });
+  assert.equal(sections[0].y, 0);
+  assert.equal(sections[1].y, 1280 / 3);
+  assert.equal(sections[2].y + sections[2].height, 1280);
+
+  const canvas = { width: 0, height: 0 };
+  configureOutputCanvas(canvas, 720);
+  assert.deepEqual(canvas, { width: 720, height: 1280 });
+});
+
+test('changing resolution keeps a partially loaded composition visible', () => {
+  const canvas = { width: 1080, height: 1920 };
+  const ctx = createRecordingContext();
+  const slots = [
+    { duration: 4, video: { videoWidth: 1920, videoHeight: 1080 } },
+    { duration: 0, video: null },
+    { duration: 0, video: null }
+  ];
+
+  drawComposition(canvas, ctx, {
+    slots,
+    captions: ['', '', ''],
+    labels: ['上', '中', '下'],
+    resolution: 720
+  });
+
+  assert.deepEqual(canvas, { width: 720, height: 1280 });
+  assert.equal(ctx.calls.filter(call => call[0] === 'drawImage').length, 1);
+  assert.equal(ctx.calls.filter(call => call[0] === 'fillText').length, 2);
 });

@@ -13,6 +13,7 @@ import {
   FFMPEG_GRADIENT_BASE_OPACITY,
   FFMPEG_GRADIENT_EXPONENT,
   FFMPEG_GRADIENT_OPACITY_RANGE,
+  getOutputGeometry,
   OUTPUT_WIDTH,
   SECTION_HEIGHT
 } from './public/composition-core.js';
@@ -51,7 +52,8 @@ export async function writeGradientMask(maskPath, width = OUTPUT_WIDTH, height =
 
 export async function renderMp4(files, fields, jobDir, options = {}) {
   const { signal } = options;
-  const { exportLength, clipLength, starts, captions, captionIndexes } = normalizeRenderFields(fields);
+  const { exportLength, clipLength, resolution, frameRate, starts, captions, captionIndexes } = normalizeRenderFields(fields);
+  const geometry = getOutputGeometry(resolution);
   const outputPath = path.join(jobDir, 'triptych.mp4');
   const maskPath = path.join(jobDir, 'caption-gradient.pgm');
   const segmentPaths = [];
@@ -68,7 +70,7 @@ export async function renderMp4(files, fields, jobDir, options = {}) {
   }
 
   if (captionIndexes.length) {
-    await writeGradientMask(maskPath);
+    await writeGradientMask(maskPath, geometry.width, geometry.ffmpegSectionHeight);
   }
 
   await runCommand(ffmpegPath, buildFinalRenderArgs({
@@ -77,6 +79,8 @@ export async function renderMp4(files, fields, jobDir, options = {}) {
     captions,
     captionIndexes,
     maskPath,
+    resolution,
+    frameRate,
     outputPath
   }), jobDir, { label: 'FFmpeg final render', signal });
   return outputPath;

@@ -26,8 +26,8 @@ http://服务器IP:3000
 
 - MP4
 - H.264
-- 1080 x 1920
-- 30fps
+- 1080 x 1920 or 720 x 1280
+- 30fps or 60fps
 - yuv420p
 - 静音 AAC 音轨
 - faststart

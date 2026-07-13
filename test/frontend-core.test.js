@@ -16,6 +16,7 @@ import {
   getSegmentWindow,
   getStart,
   getExportReadiness,
+  hasRenderableSlot,
   isReady,
   labels,
   MAX_EXPORT_SECONDS,
@@ -124,6 +125,7 @@ test('getSegmentWindow computes left and width percentages, with 34% default whe
 test('readyCount / isReady / totalBytes operate on slot array', () => {
   const empty = Array.from({ length: 3 }, () => ({ file: null, url: '', video: null, duration: 0 }));
   assert.equal(readyCount(empty), 0);
+  assert.equal(hasRenderableSlot(empty), false);
   assert.equal(isReady(empty), false);
   assert.equal(totalBytes(empty), 0);
 
@@ -131,6 +133,7 @@ test('readyCount / isReady / totalBytes operate on slot array', () => {
     ? { file: { name: 'a.mp4', size: 1024 * 1024 }, url: 'blob:', video: { duration: 5 }, duration: 5 }
     : s);
   assert.equal(readyCount(one), 1);
+  assert.equal(hasRenderableSlot(one), true);
   assert.equal(isReady(one), false);
   assert.equal(totalBytes(one), 1024 * 1024);
 
@@ -255,6 +258,26 @@ test('buildLoadHint reflects ready count, totals, and export mode', () => {
   assert.equal(image.outputMeta, '1080 × 1920 / 当前预览帧');
   assert.equal(image.limit, `${formatSize(200 * 1024 * 1024)} / ${MAX_TOTAL_MB}MB`);
   assert.equal(image.multiPick, '↻ 重新选择 3 个视频');
+
+  const compactVideo = buildLoadHint({
+    ready: 3,
+    total: 0,
+    exportMode: 'video',
+    exportLength: 5,
+    resolution: 720,
+    frameRate: 60
+  });
+  assert.equal(compactVideo.outputMeta, '720 × 1280 / 60fps');
+
+  const compactImage = buildLoadHint({
+    ready: 3,
+    total: 0,
+    exportMode: 'image',
+    exportLength: 5,
+    resolution: 720,
+    frameRate: 60
+  });
+  assert.equal(compactImage.outputMeta, '720 × 1280 / 当前预览帧');
 });
 
 test('buildChecklistText maps mode to text and flags', () => {

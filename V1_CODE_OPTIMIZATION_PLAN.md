@@ -16,6 +16,7 @@ Recent work completed:
 - Preview transport and export inspector.
 - MP4 export through `/api/render`.
 - PNG triptych export from the current preview frame.
+- Functional 1080 x 1920 / 720 x 1280 output selection and 30fps / 60fps MP4 selection.
 - Persistent export error display.
 - Optional local render proxy via `RENDER_PROXY_URL`.
 - `server-core.js` extracted for pure backend render logic.
