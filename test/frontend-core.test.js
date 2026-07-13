@@ -31,6 +31,7 @@ import {
   sanitizeCaption,
   totalBytes,
   validateBatchSelection,
+  validateSlotReplacement,
   validateVideoFile,
   videoPositionLabels
 } from '../public/app-core.js';
@@ -195,6 +196,27 @@ test('projectedTotalBytes and getExportReadiness guard single-slot replacements'
   assert.equal(partial.allowed, false);
   assert.equal(partial.code, 'missing');
   assert.match(partial.reason, /还需选择 1 个视频/);
+});
+
+test('validateSlotReplacement rejects before replacing an existing slot', () => {
+  const slots = [1, 2, 3].map(size => ({
+    file: { name: `${size}.mp4`, size: size * 1024 * 1024 },
+    video: { duration: 5 },
+    duration: 5
+  }));
+  const candidate = {
+    file: { name: 'replacement.mp4', size: 8 * 1024 * 1024 },
+    video: { duration: 5 },
+    duration: 5
+  };
+
+  assert.equal(validateSlotReplacement(slots, 1, candidate, 12 * 1024 * 1024), null);
+
+  const issue = validateSlotReplacement(slots, 1, candidate, 11 * 1024 * 1024);
+  assert.equal(issue.code, 'total');
+  assert.equal(issue.index, 1);
+  assert.equal(issue.total, 12 * 1024 * 1024);
+  assert.match(issue.message, /原素材未更改/);
 });
 
 test('buildSlotMeta mirrors the previous inline format', () => {

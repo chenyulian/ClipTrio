@@ -943,11 +943,11 @@
       MAX_VIDEO_SECONDS,
       normalizeClipLength,
       normalizeExportLength,
-      projectedTotalBytes,
       readyCount as readyCountCore,
       sanitizeCaption,
       totalBytes as totalBytesCore,
       validateBatchSelection,
+      validateSlotReplacement,
       validateVideoFile,
       videoPositionLabels
     } from './app-core.js';
@@ -1471,7 +1471,10 @@
         const previousSlots = slots;
         const nextSlots = slots.slice();
         nextSlots[index] = candidate;
-        const projectedTotal = projectedTotalBytes(slots, index, file);
+        const replacementIssue = validateSlotReplacement(slots, index, candidate);
+        if (replacementIssue) {
+          throw sourceLoadError(replacementIssue.message, index);
+        }
 
         slots = nextSlots;
         try {
@@ -1489,12 +1492,7 @@
         previewSeen = false;
         updateLoadHint();
         succeeded = true;
-        if (projectedTotal > MAX_TOTAL_BYTES) {
-          finalMessage = getExportReadiness(slots).reason;
-          finalState = 'error';
-        } else {
-          finalMessage = `已载入${videoPositionLabels[index]}视频。`;
-        }
+        finalMessage = `已载入${videoPositionLabels[index]}视频。`;
       } catch (error) {
         if (candidate) releaseSlot(candidate);
         const slotIndex = Number.isInteger(error.slotIndex) ? error.slotIndex : index;

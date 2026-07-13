@@ -160,6 +160,19 @@ export function projectedTotalBytes(slots, index, nextFile) {
   }, 0);
 }
 
+export function validateSlotReplacement(slots, index, candidate, maxTotalBytes = MAX_TOTAL_BYTES) {
+  const total = projectedTotalBytes(slots, index, candidate?.file);
+  if (total <= maxTotalBytes) return null;
+
+  const maxTotalMb = Math.round(maxTotalBytes / MB);
+  return {
+    code: 'total',
+    index,
+    total,
+    message: `替换后 3 个视频合计 ${formatSize(total)}，超过总量 ${maxTotalMb}MB 上限，原素材未更改。`
+  };
+}
+
 export function getExportReadiness(slots, maxTotalBytes = MAX_TOTAL_BYTES) {
   const count = readyCount(slots);
   const total = totalBytes(slots);
