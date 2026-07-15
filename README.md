@@ -1,6 +1,6 @@
 # ClipTrio
 
-把 3 个 iPhone Live Photo 导出的 MOV/MP4 拼成可发小红书/抖音的竖版 MP4。
+视频 3 拼工具，可添加字幕，导出为视频或图片。
 
 ## 纯前端版（ffmpeg.wasm 技术验证）
 
