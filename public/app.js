@@ -4,6 +4,7 @@ import {
   buildLoadHint,
   buildSlotMeta,
   clamp,
+  createEmptySlot,
   formatPreciseSeconds,
   formatTime,
   getMaxSegmentStart,
@@ -20,6 +21,7 @@ import {
   normalizeExportLength,
   normalizeSegmentStart,
   readyCount as readyCountCore,
+  removeSlotAt,
   sanitizeCaption,
   totalBytes as totalBytesCore,
   validateBatchSelection,
@@ -61,6 +63,7 @@ const nameEls = ['nameA', 'nameB', 'nameC'].map(id => document.getElementById(id
 const detailEls = ['detailA', 'detailB', 'detailC'].map(id => document.getElementById(id));
 const slotEls = ['slotA', 'slotB', 'slotC'].map(id => document.getElementById(id));
 const pickButtons = slotEls.map(slot => slot.querySelector('.pick'));
+const resetButtons = slotEls.map(slot => slot.querySelector('.reset-slot'));
 const startSliders = ['startA', 'startB', 'startC'].map(id => document.getElementById(id));
 const startValues = ['startAValue', 'startBValue', 'startCValue'].map(id => document.getElementById(id));
 const endValues = ['endAValue', 'endBValue', 'endCValue'].map(id => document.getElementById(id));
@@ -77,7 +80,7 @@ const checks = {
   preview: document.getElementById('checkPreview')
 };
 
-let slots = Array.from({ length: 3 }, () => ({ file: null, url: '', video: null, duration: 0 }));
+let slots = Array.from({ length: 3 }, createEmptySlot);
 let playing = false;
 let previewSeen = false;
 let rafId = 0;
@@ -157,6 +160,10 @@ function syncActionAvailability() {
   multiPickButton.disabled = busy;
   fileInputs.forEach(input => { input.disabled = busy; });
   pickButtons.forEach(button => { button.disabled = busy; });
+  resetButtons.forEach((button, index) => {
+    button.disabled = busy || !slots[index].video;
+    button.setAttribute('aria-disabled', String(button.disabled));
+  });
   exportBlockReason.textContent = busy
     ? (sourceLoading ? '正在验证视频，当前素材会保留到验证完成。' : '正在处理，请稍候。')
     : readiness.reason;
@@ -429,6 +436,34 @@ function releaseSlot(slot) {
     slot.video.remove();
   }
   if (slot.url) URL.revokeObjectURL(slot.url);
+}
+
+async function resetSlot(index) {
+  if (sourceLoading || processing || !slots[index]?.video) return false;
+
+  pausePreview(`正在清空${videoPositionLabels[index]}视频…`);
+  const { nextSlots, removedSlot } = removeSlotAt(slots, index);
+  slots = nextSlots;
+  slotErrors[index] = '';
+  sourceFeedbackMessage = '';
+  startSliders[index].value = '0';
+  captionInputs[index].value = '';
+  fileInputs[index].value = '';
+  previewSeen = false;
+  releaseSlot(removedSlot);
+  syncCaptionCounts();
+  updateLoadHint();
+
+  if (hasRenderableSlot(slots)) {
+    await resetSegments().catch(() => drawFrame());
+  } else {
+    syncLabels();
+    updatePreviewProgress(0);
+    drawPlaceholder();
+  }
+
+  setStatus(`已清空${videoPositionLabels[index]}视频，其余素材和设置已保留。`);
+  return true;
 }
 
 async function prepareVideoSlot(index, file) {
@@ -747,6 +782,9 @@ fileInputs.forEach((input, index) => input.addEventListener('change', event => {
   const file = event.target.files?.[0];
   event.target.value = '';
   loadFileIntoSlot(index, file).catch(error => setStatus(error.message, 'error'));
+}));
+resetButtons.forEach((button, index) => button.addEventListener('click', () => {
+  resetSlot(index).catch(error => setStatus(error.message || '清空视频失败，请重试。', 'error'));
 }));
 startSliders.forEach(slider => slider.addEventListener('input', () => {
   previewSeen = false;

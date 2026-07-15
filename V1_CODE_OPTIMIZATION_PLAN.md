@@ -251,7 +251,7 @@ Tasks:
 These are product/UI tasks, not code-hardening tasks. Run them only when explicitly requested.
 
 - More precise segment handles with visible start/end time editing.
-- Per-slot reset button.
+- Per-slot reset button. Completed 2026-07-15: each ready source slot can be cleared independently, releasing its browser resources and resetting only that slot's timing/caption state.
 - Per-slot mute/audio policy if future exports include source audio.
 - Optional caption style controls.
 - Recent exports panel.

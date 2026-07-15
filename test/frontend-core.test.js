@@ -9,6 +9,7 @@ import {
   CAPTION_MAX,
   CAPTION_RE,
   clamp,
+  createEmptySlot,
   formatSize,
   formatTime,
   formatPreciseSeconds,
@@ -33,6 +34,7 @@ import {
   normalizeSegmentStart,
   projectedTotalBytes,
   readyCount,
+  removeSlotAt,
   sanitizeCaption,
   totalBytes,
   validateBatchSelection,
@@ -160,6 +162,26 @@ test('readyCount / isReady / totalBytes operate on slot array', () => {
   assert.equal(readyCount(all), 3);
   assert.equal(isReady(all), true);
   assert.equal(totalBytes(all), 5 * 1024 * 1024);
+});
+
+test('removeSlotAt clears only the selected slot without mutating its siblings', () => {
+  const slots = [0, 1, 2].map(index => ({
+    file: { name: `${index}.mp4`, size: index + 1 },
+    url: `blob:${index}`,
+    video: { id: index },
+    duration: index + 4
+  }));
+
+  const { nextSlots, removedSlot } = removeSlotAt(slots, 1);
+  assert.notEqual(nextSlots, slots);
+  assert.equal(removedSlot, slots[1]);
+  assert.equal(nextSlots[0], slots[0]);
+  assert.equal(nextSlots[2], slots[2]);
+  assert.deepEqual(nextSlots[1], createEmptySlot());
+  assert.equal(slots[1].url, 'blob:1');
+
+  assert.deepEqual(removeSlotAt(slots, -1), { nextSlots: slots, removedSlot: null });
+  assert.deepEqual(removeSlotAt(slots, 3), { nextSlots: slots, removedSlot: null });
 });
 
 test('validateVideoFile aligns browser selection with the renderer contract', () => {

@@ -237,7 +237,7 @@
     .slot {
       position: relative;
       display: grid;
-      grid-template-columns: 34px minmax(0, 1fr) 62px;
+      grid-template-columns: 34px minmax(0, 1fr) auto;
       gap: 9px;
       align-items: center;
       min-height: 58px;
@@ -299,6 +299,25 @@
       overflow: hidden;
       text-overflow: ellipsis;
     }
+
+    .slot-actions {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+    }
+
+    .reset-slot {
+      visibility: hidden;
+      min-width: 36px;
+      min-height: 30px;
+      padding: 0 5px;
+      border-color: transparent;
+      color: var(--soft);
+      font-size: 11px;
+    }
+
+    .slot.ready .reset-slot { visibility: visible; }
+    .reset-slot:hover:not(:disabled) { border-color: #dfb1ac; color: var(--danger); background: #fff8f7; }
 
     .pick {
       position: relative;
@@ -807,9 +826,9 @@
           <div class="source-panel" id="dropZone">
             <input class="batch-pick" id="multiFiles" type="file" accept="video/*,.mov,.mp4,.m4v" multiple>
             <div class="slots">
-              <div class="slot" id="slotA" data-slot="0"><span class="chip">上</span><div class="slot-text"><div class="name" id="nameA">未选择</div><div class="slot-detail" id="detailA">拖入或选择视频</div></div><button class="pick" type="button">选择<input id="fileA" type="file" accept="video/*,.mov,.mp4,.m4v"></button></div>
-              <div class="slot" id="slotB" data-slot="1"><span class="chip">中</span><div class="slot-text"><div class="name" id="nameB">未选择</div><div class="slot-detail" id="detailB">拖入或选择视频</div></div><button class="pick" type="button">选择<input id="fileB" type="file" accept="video/*,.mov,.mp4,.m4v"></button></div>
-              <div class="slot" id="slotC" data-slot="2"><span class="chip">下</span><div class="slot-text"><div class="name" id="nameC">未选择</div><div class="slot-detail" id="detailC">拖入或选择视频</div></div><button class="pick" type="button">选择<input id="fileC" type="file" accept="video/*,.mov,.mp4,.m4v"></button></div>
+              <div class="slot" id="slotA" data-slot="0"><span class="chip">上</span><div class="slot-text"><div class="name" id="nameA">未选择</div><div class="slot-detail" id="detailA">拖入或选择视频</div></div><div class="slot-actions"><button class="reset-slot" type="button" aria-label="清空上方视频" title="清空上方视频" disabled>清空</button><button class="pick" type="button">选择<input id="fileA" type="file" accept="video/*,.mov,.mp4,.m4v"></button></div></div>
+              <div class="slot" id="slotB" data-slot="1"><span class="chip">中</span><div class="slot-text"><div class="name" id="nameB">未选择</div><div class="slot-detail" id="detailB">拖入或选择视频</div></div><div class="slot-actions"><button class="reset-slot" type="button" aria-label="清空中间视频" title="清空中间视频" disabled>清空</button><button class="pick" type="button">选择<input id="fileB" type="file" accept="video/*,.mov,.mp4,.m4v"></button></div></div>
+              <div class="slot" id="slotC" data-slot="2"><span class="chip">下</span><div class="slot-text"><div class="name" id="nameC">未选择</div><div class="slot-detail" id="detailC">拖入或选择视频</div></div><div class="slot-actions"><button class="reset-slot" type="button" aria-label="清空下方视频" title="清空下方视频" disabled>清空</button><button class="pick" type="button">选择<input id="fileC" type="file" accept="video/*,.mov,.mp4,.m4v"></button></div></div>
             </div>
             <div class="source-actions">
               <button class="source-button" id="multiPickButton" type="button">＋ 添加 3 个视频</button>

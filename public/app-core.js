@@ -105,6 +105,20 @@ export function getSegmentWindow({ duration, start, clipLength }) {
   return { left, width };
 }
 
+export function createEmptySlot() {
+  return { file: null, url: '', video: null, duration: 0 };
+}
+
+export function removeSlotAt(slots, index) {
+  if (!Array.isArray(slots) || !Number.isInteger(index) || index < 0 || index >= slots.length) {
+    return { nextSlots: slots, removedSlot: null };
+  }
+  const nextSlots = slots.slice();
+  const removedSlot = nextSlots[index] || null;
+  nextSlots[index] = createEmptySlot();
+  return { nextSlots, removedSlot };
+}
+
 export function readyCount(slots) {
   if (!Array.isArray(slots)) return 0;
   return slots.filter(slot => slot && slot.video && Number(slot.duration) > 0).length;
