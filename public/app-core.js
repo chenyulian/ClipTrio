@@ -63,10 +63,27 @@ export function normalizeExportLength(value) {
   return clamp(Number(value), MIN_EXPORT_SECONDS, MAX_EXPORT_SECONDS);
 }
 
-export function getStart({ duration, clipLength, sliderValue }) {
+export function getMaxSegmentStart({ duration, clipLength }) {
   const safeDuration = Math.max(0, Number(duration) || 0);
   const safeClip = Math.max(MIN_CLIP_SECONDS, Number(clipLength) || MIN_CLIP_SECONDS);
-  const maxStart = Math.max(0, safeDuration - safeClip - 0.03);
+  return Math.max(0, safeDuration - safeClip - 0.03);
+}
+
+export function normalizeSegmentStart({ duration, clipLength, start }) {
+  return clamp(Number(start), 0, getMaxSegmentStart({ duration, clipLength }));
+}
+
+export function getSegmentStartFromEnd({ duration, clipLength, end }) {
+  const safeClip = Math.max(MIN_CLIP_SECONDS, Number(clipLength) || MIN_CLIP_SECONDS);
+  return normalizeSegmentStart({ duration, clipLength, start: Number(end) - safeClip });
+}
+
+export function formatPreciseSeconds(value) {
+  return Math.max(0, Number(value) || 0).toFixed(2);
+}
+
+export function getStart({ duration, clipLength, sliderValue }) {
+  const maxStart = getMaxSegmentStart({ duration, clipLength });
   const ratio = clamp(Number(sliderValue) / 1000, 0, 1);
   return maxStart * ratio;
 }

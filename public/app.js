@@ -4,10 +4,12 @@ import {
   buildLoadHint,
   buildSlotMeta,
   clamp,
+  formatPreciseSeconds,
   formatTime,
+  getMaxSegmentStart,
   getSegmentEnd,
+  getSegmentStartFromEnd,
   getSegmentWindow,
-  getStart as getStartCore,
   getExportReadiness,
   hasRenderableSlot,
   isReady as isReadyCore,
@@ -16,6 +18,7 @@ import {
   MAX_VIDEO_SECONDS,
   normalizeClipLength,
   normalizeExportLength,
+  normalizeSegmentStart,
   readyCount as readyCountCore,
   sanitizeCaption,
   totalBytes as totalBytesCore,
@@ -170,6 +173,8 @@ function syncSegmentAvailability(isProcessing = false) {
     const enabled = !isProcessing && Boolean(slots[index].video && slots[index].duration);
     slider.disabled = !enabled;
     slider.setAttribute('aria-disabled', String(!enabled));
+    startValues[index].disabled = !enabled;
+    endValues[index].disabled = !enabled;
     segmentPickers[index].classList.toggle('is-disabled', !enabled);
   });
 
@@ -256,23 +261,46 @@ function syncExportMode(mode) {
 }
 
 function getStart(index) {
-  return getStartCore({
+  return normalizeSegmentStart({
     duration: slots[index].duration,
     clipLength: getClipLength(),
-    sliderValue: Number(startSliders[index].value)
+    start: Number(startSliders[index].value) / 1000
   });
+}
+
+function setSegmentStart(index, value) {
+  const start = normalizeSegmentStart({
+    duration: slots[index].duration,
+    clipLength: getClipLength(),
+    start: value
+  });
+  startSliders[index].value = String(Math.round(start * 1000));
+  return getStart(index);
 }
 
 function syncLabels() {
   startSliders.forEach((slider, index) => {
-    const start = getStart(index);
+    const maxStart = getMaxSegmentStart({
+      duration: slots[index].duration,
+      clipLength: getClipLength()
+    });
+    slider.max = String(Math.max(0, Math.round(maxStart * 1000)));
+    const start = setSegmentStart(index, Number(slider.value) / 1000);
     const end = getSegmentEnd({
       duration: slots[index].duration,
       start,
       clipLength: getClipLength()
     });
-    startValues[index].textContent = formatTime(start);
-    endValues[index].textContent = formatTime(end);
+    const maxEnd = getSegmentEnd({
+      duration: slots[index].duration,
+      start: maxStart,
+      clipLength: getClipLength()
+    });
+    startValues[index].max = formatPreciseSeconds(maxStart);
+    endValues[index].min = formatPreciseSeconds(Math.min(slots[index].duration, getClipLength()));
+    endValues[index].max = formatPreciseSeconds(maxEnd);
+    startValues[index].value = formatPreciseSeconds(start);
+    endValues[index].value = formatPreciseSeconds(end);
   });
   clipLengthHint.textContent = `循环 ${getClipLength().toFixed(1)}s`;
   syncSegmentWindows();
@@ -353,6 +381,7 @@ function seekVideo(video, time, duration) {
 }
 
 async function resetSegments() {
+  syncLabels();
   await Promise.all(slots.map((slot, index) => slot.video ? seekVideo(slot.video, getStart(index), slot.duration) : Promise.resolve()));
   syncSegmentWindows();
   updatePreviewProgress(0);
@@ -725,6 +754,40 @@ startSliders.forEach(slider => slider.addEventListener('input', () => {
   resetSegments().catch(() => {});
   updateChecks();
 }));
+function commitPreciseSegmentTime(index, anchor) {
+  const input = anchor === 'end' ? endValues[index] : startValues[index];
+  const value = Number(input.value);
+  if (!Number.isFinite(value)) {
+    syncLabels();
+    return;
+  }
+  const start = anchor === 'end'
+    ? getSegmentStartFromEnd({
+      duration: slots[index].duration,
+      clipLength: getClipLength(),
+      end: value
+    })
+    : value;
+  const committedStart = setSegmentStart(index, start);
+  previewSeen = false;
+  syncLabels();
+  resetSegments().catch(() => drawFrame());
+  updateChecks();
+  setStatus(`${videoPositionLabels[index]}片段起点已设为 ${formatPreciseSeconds(committedStart)}s。`);
+}
+
+startValues.forEach((input, index) => {
+  input.addEventListener('change', () => commitPreciseSegmentTime(index, 'start'));
+  input.addEventListener('keydown', event => {
+    if (event.key === 'Enter') input.blur();
+  });
+});
+endValues.forEach((input, index) => {
+  input.addEventListener('change', () => commitPreciseSegmentTime(index, 'end'));
+  input.addEventListener('keydown', event => {
+    if (event.key === 'Enter') input.blur();
+  });
+});
 captionInputs.forEach(input => input.addEventListener('input', () => {
   const cleaned = sanitizeCaption(input.value);
   if (input.value !== cleaned) input.value = cleaned;
@@ -733,11 +796,16 @@ captionInputs.forEach(input => input.addEventListener('input', () => {
   drawFrame();
   updateChecks();
 }));
-['clipLength', 'exportLength'].forEach(id => document.getElementById(id).addEventListener('input', () => {
+clipLengthInput.addEventListener('input', () => {
   previewSeen = false;
+  syncLabels();
   updateLoadHint();
   resetSegments().catch(() => drawFrame());
-}));
+});
+document.getElementById('exportLength').addEventListener('input', () => {
+  previewSeen = false;
+  updateLoadHint();
+});
 playBtn.addEventListener('click', () => playing ? pausePreview() : startPreview().catch(error => setStatus(error.message, 'error')));
 previewProgress.addEventListener('input', async () => {
   if (!isReady()) return;

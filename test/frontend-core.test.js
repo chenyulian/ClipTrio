@@ -11,8 +11,11 @@ import {
   clamp,
   formatSize,
   formatTime,
+  formatPreciseSeconds,
   formatVideoMeta,
+  getMaxSegmentStart,
   getSegmentEnd,
+  getSegmentStartFromEnd,
   getSegmentWindow,
   getStart,
   getExportReadiness,
@@ -27,6 +30,7 @@ import {
   MAX_VIDEO_SECONDS,
   normalizeClipLength,
   normalizeExportLength,
+  normalizeSegmentStart,
   projectedTotalBytes,
   readyCount,
   sanitizeCaption,
@@ -103,6 +107,19 @@ test('getStart returns 0 when slider is 0 and clips to max start', () => {
   // slider out of range clamps to ratio
   assert.equal(getStart({ duration: 10, clipLength: 3, sliderValue: -200 }), 0);
   assert.equal(getStart({ duration: 10, clipLength: 3, sliderValue: 1500 }), 10 - 3 - 0.03);
+});
+
+test('precise segment helpers preserve absolute starts and clamp editable ends', () => {
+  assert.equal(getMaxSegmentStart({ duration: 10, clipLength: 3 }), 6.97);
+  assert.equal(getMaxSegmentStart({ duration: 2, clipLength: 3 }), 0);
+  assert.equal(normalizeSegmentStart({ duration: 10, clipLength: 3, start: 1.237 }), 1.237);
+  assert.equal(normalizeSegmentStart({ duration: 10, clipLength: 3, start: 99 }), 6.97);
+  assert.equal(normalizeSegmentStart({ duration: 10, clipLength: 3, start: -2 }), 0);
+  assert.equal(getSegmentStartFromEnd({ duration: 10, clipLength: 3, end: 7.25 }), 4.25);
+  assert.equal(getSegmentStartFromEnd({ duration: 10, clipLength: 3, end: 99 }), 6.97);
+  assert.equal(getSegmentStartFromEnd({ duration: 10, clipLength: 3, end: 1 }), 0);
+  assert.equal(formatPreciseSeconds(1.237), '1.24');
+  assert.equal(formatPreciseSeconds(-1), '0.00');
 });
 
 test('getSegmentEnd is min(duration, start+clipLength), clamping negative starts to 0', () => {
