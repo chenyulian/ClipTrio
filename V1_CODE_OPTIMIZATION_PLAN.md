@@ -250,7 +250,7 @@ Tasks:
 
 These are product/UI tasks, not code-hardening tasks. Run them only when explicitly requested.
 
-- More precise segment handles with visible start/end time editing.
+- More precise segment handles with visible start/end time editing. Completed 2026-07-14: each source exposes 0.01-second start/end inputs, keeps absolute starts across duration changes, and clamps values to the source boundary.
 - Per-slot reset button. Completed 2026-07-15: each ready source slot can be cleared independently, releasing its browser resources and resetting only that slot's timing/caption state.
 - Per-slot mute/audio policy if future exports include source audio.
 - Optional caption style controls.
@@ -259,6 +259,75 @@ These are product/UI tasks, not code-hardening tasks. Run them only when explici
 - Mobile Web layout.
 - 2K/4K output modes.
 - Batch generation.
+
+## Remaining Implementation Tasks After Phase 7 Partial Completion
+
+Status date: 2026-07-15.
+
+The following tasks remain after precise segment editing, per-slot reset, drag-to-reorder, configurable export quality, and session-scoped recent exports were completed. Develop each item on its own branch and avoid combining product-contract changes with unrelated refactors.
+
+### Recommended PC Web V1 Hardening
+
+1. Encoded browser-PNG smoke coverage
+   - Suggested branch: `feature/browser-png-smoke`.
+   - Add a dependency-free browser harness only when one is available or can be implemented without adding a framework-sized dependency.
+   - Assert encoded PNG MIME type, exact dimensions, top/middle/bottom section colors and boundaries, and at least one caption sample.
+   - Compare the same fixture/timestamp against the existing Canvas geometry contract and documented MP4 smoke output.
+   - Keep the current manual PNG flow in `RENDER_SMOKE_TEST.md` until this branch is complete.
+
+2. Renderer concurrency and queue limits
+   - Suggested branch: `feature/render-concurrency-limit`.
+   - Add a bounded number of active render jobs and a small bounded queue before public deployment.
+   - Return an actionable busy response without exposing internal job details.
+   - Preserve abort propagation and temporary-directory cleanup for active, queued, disconnected, timed-out, and failed jobs.
+   - Add route-level tests for admission, queue overflow, cancellation, and capacity recovery.
+
+3. Focused frontend lifecycle boundaries
+   - Suggested branch: `refactor/frontend-lifecycle-boundaries`.
+   - Extract file-slot lifecycle or export transport only when the extraction creates a focused automated test boundary.
+   - Prioritize object-URL ownership, recent-export URL cleanup, reorder/reset state transitions, and MP4 failure recovery.
+   - Do not introduce a framework, bundler, or broad component rewrite.
+
+### Product Decisions And Renderer Contract Changes
+
+4. Source-audio policy
+   - Suggested branch: `feature/source-audio-policy`.
+   - Current MP4 output intentionally contains silent AAC generated with `anullsrc`; source audio is discarded during segment preparation.
+   - Decide the supported policy before implementation: keep silent, choose one source, or mix selected sources.
+   - Update frontend controls, `/api/render` fields, server validation, FFmpeg arguments, smoke fixtures, and troubleshooting documentation together.
+
+5. Caption style controls
+   - Suggested branch: `feature/caption-style-presets`.
+   - Prefer a small set of validated presets over arbitrary styling controls.
+   - Keep Canvas preview, PNG output, FFmpeg captions, server validation, and shared composition constants aligned.
+   - Add geometry and rendered-output checks for every supported preset.
+
+6. 2K/4K output modes
+   - Suggested branch: `feature/high-resolution-output`.
+   - Extend shared geometry, browser Canvas sizing, server validation, FFmpeg level/settings, UI facts, and smoke verification as one contract change.
+   - Define memory, upload, render-time, and concurrency limits before enabling 4K.
+   - Verify exact dimensions, contiguous thirds, captions, 30/60fps behavior, and proxy/direct rendering.
+
+7. Batch generation
+   - Suggested branch: `feature/batch-generation`.
+   - Define whether a batch varies source sets, timing presets, captions, or export presets before implementation.
+   - Build on renderer concurrency limits rather than starting unbounded parallel renders.
+   - Specify queue visibility, per-item cancellation/retry, failure preservation, output naming, and cleanup semantics.
+
+### Explicit Later Platform Work
+
+8. Mobile Web layout
+   - Suggested branch: `feature/mobile-web-layout`.
+   - Treat this as a separate responsive-product pass, not incidental PC cleanup.
+   - Preserve the PC three-zone workflow while designing touch-safe source ordering, timing inputs, preview transport, and export visibility.
+   - Verify supported mobile viewport ranges, touch drag alternatives, memory behavior, and download limitations.
+
+### Ongoing Maintenance Rules
+
+- Update route lifecycle tests whenever render admission, proxying, cancellation, or cleanup behavior changes.
+- Update Canvas geometry and FFmpeg consistency checks whenever resolution, caption, crop, or section behavior changes.
+- Keep the dependency-free Node test runner unless a separately approved browser harness requires a narrowly scoped addition.
+- Do not treat persistent recent-export storage as part of the current implementation: recent MP4/PNG blobs intentionally live only for the current page session and are revoked on eviction or unload.
 
 ## Recommended Agent Prompts
 
