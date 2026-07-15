@@ -82,6 +82,19 @@ export function formatPreciseSeconds(value) {
   return Math.max(0, Number(value) || 0).toFixed(2);
 }
 
+export function getSegmentSliderState({ duration, clipLength, startMilliseconds }) {
+  const maxMilliseconds = Math.max(0, Math.round(getMaxSegmentStart({ duration, clipLength }) * 1000));
+  const start = normalizeSegmentStart({
+    duration,
+    clipLength,
+    start: Number(startMilliseconds) / 1000
+  });
+  return {
+    maxMilliseconds,
+    valueMilliseconds: Math.min(maxMilliseconds, Math.max(0, Math.round(start * 1000)))
+  };
+}
+
 export function getStart({ duration, clipLength, sliderValue }) {
   const maxStart = getMaxSegmentStart({ duration, clipLength });
   const ratio = clamp(Number(sliderValue) / 1000, 0, 1);
@@ -117,6 +130,31 @@ export function removeSlotAt(slots, index) {
   const removedSlot = nextSlots[index] || null;
   nextSlots[index] = createEmptySlot();
   return { nextSlots, removedSlot };
+}
+
+export function moveArrayItem(items, fromIndex, toIndex) {
+  if (!Array.isArray(items)
+    || !Number.isInteger(fromIndex)
+    || !Number.isInteger(toIndex)
+    || fromIndex < 0
+    || toIndex < 0
+    || fromIndex >= items.length
+    || toIndex >= items.length) {
+    return items;
+  }
+  const nextItems = items.slice();
+  const [movedItem] = nextItems.splice(fromIndex, 1);
+  nextItems.splice(toIndex, 0, movedItem);
+  return nextItems;
+}
+
+export function reorderSlotState({ slots, starts, captions, errors }, fromIndex, toIndex) {
+  return {
+    slots: moveArrayItem(slots, fromIndex, toIndex),
+    starts: moveArrayItem(starts, fromIndex, toIndex),
+    captions: moveArrayItem(captions, fromIndex, toIndex),
+    errors: moveArrayItem(errors, fromIndex, toIndex)
+  };
 }
 
 export function readyCount(slots) {

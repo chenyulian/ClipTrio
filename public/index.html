@@ -264,6 +264,17 @@
 
     .slot:hover { border-color: #bdb2ad; }
     .slot.dragging { border-color: var(--accent); background: var(--accent-soft); }
+    .slot.reorderable { cursor: grab; }
+    .slot.reorderable:active { cursor: grabbing; }
+    .slot.reordering { opacity: .58; }
+    .slot.reorder-target {
+      border-color: var(--accent);
+      background: var(--accent-soft);
+      box-shadow: inset 0 0 0 1px var(--accent);
+    }
+
+    .slot button,
+    .slot input { cursor: pointer; }
 
     .chip {
       height: 28px;

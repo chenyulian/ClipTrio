@@ -16,6 +16,7 @@ import {
   formatVideoMeta,
   getMaxSegmentStart,
   getSegmentEnd,
+  getSegmentSliderState,
   getSegmentStartFromEnd,
   getSegmentWindow,
   getStart,
@@ -29,12 +30,14 @@ import {
   MAX_VIDEO_BYTES,
   MAX_VIDEO_MB,
   MAX_VIDEO_SECONDS,
+  moveArrayItem,
   normalizeClipLength,
   normalizeExportLength,
   normalizeSegmentStart,
   projectedTotalBytes,
   readyCount,
   removeSlotAt,
+  reorderSlotState,
   sanitizeCaption,
   totalBytes,
   validateBatchSelection,
@@ -124,6 +127,25 @@ test('precise segment helpers preserve absolute starts and clamp editable ends',
   assert.equal(formatPreciseSeconds(-1), '0.00');
 });
 
+test('segment slider state updates its new bound before preserving a reordered absolute start', () => {
+  assert.deepEqual(getSegmentSliderState({
+    duration: 10,
+    clipLength: 3,
+    startMilliseconds: 2000
+  }), {
+    maxMilliseconds: 6970,
+    valueMilliseconds: 2000
+  });
+  assert.deepEqual(getSegmentSliderState({
+    duration: 4,
+    clipLength: 3,
+    startMilliseconds: 2000
+  }), {
+    maxMilliseconds: 970,
+    valueMilliseconds: 970
+  });
+});
+
 test('getSegmentEnd is min(duration, start+clipLength), clamping negative starts to 0', () => {
   assert.equal(getSegmentEnd({ duration: 10, start: 4, clipLength: 3 }), 7);
   assert.equal(getSegmentEnd({ duration: 5, start: 4, clipLength: 3 }), 5);
@@ -182,6 +204,32 @@ test('removeSlotAt clears only the selected slot without mutating its siblings',
 
   assert.deepEqual(removeSlotAt(slots, -1), { nextSlots: slots, removedSlot: null });
   assert.deepEqual(removeSlotAt(slots, 3), { nextSlots: slots, removedSlot: null });
+});
+
+test('moveArrayItem reorders source-bound state without mutating the original list', () => {
+  const items = ['top', 'middle', 'bottom'];
+  assert.deepEqual(moveArrayItem(items, 0, 2), ['middle', 'bottom', 'top']);
+  assert.deepEqual(moveArrayItem(items, 2, 0), ['bottom', 'top', 'middle']);
+  assert.deepEqual(moveArrayItem(items, 1, 1), items);
+  assert.deepEqual(items, ['top', 'middle', 'bottom']);
+  assert.equal(moveArrayItem(items, -1, 1), items);
+  assert.equal(moveArrayItem(items, 0, 3), items);
+});
+
+test('reorderSlotState keeps each source paired with its timing, caption, and error', () => {
+  const reordered = reorderSlotState({
+    slots: ['top.mp4', 'middle.mp4', 'bottom.mp4'],
+    starts: ['1.25', '2.50', '3.75'],
+    captions: ['top caption', 'middle caption', 'bottom caption'],
+    errors: ['top error', '', 'bottom error']
+  }, 0, 2);
+
+  assert.deepEqual(reordered, {
+    slots: ['middle.mp4', 'bottom.mp4', 'top.mp4'],
+    starts: ['2.50', '3.75', '1.25'],
+    captions: ['middle caption', 'bottom caption', 'top caption'],
+    errors: ['', 'bottom error', 'top error']
+  });
 });
 
 test('validateVideoFile aligns browser selection with the renderer contract', () => {

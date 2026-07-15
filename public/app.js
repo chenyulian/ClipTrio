@@ -9,6 +9,7 @@ import {
   formatTime,
   getMaxSegmentStart,
   getSegmentEnd,
+  getSegmentSliderState,
   getSegmentStartFromEnd,
   getSegmentWindow,
   getExportReadiness,
@@ -22,6 +23,7 @@ import {
   normalizeSegmentStart,
   readyCount as readyCountCore,
   removeSlotAt,
+  reorderSlotState,
   sanitizeCaption,
   totalBytes as totalBytesCore,
   validateBatchSelection,
@@ -90,7 +92,9 @@ let outputFrameRate = 30;
 let processing = false;
 let sourceLoading = false;
 let sourceFeedbackMessage = '';
+let draggedSlotIndex = -1;
 const slotErrors = ['', '', ''];
+const SLOT_REORDER_TYPE = 'application/x-cliptrio-slot';
 
 function setStatus(text, state = 'idle') {
   statusEl.textContent = text;
@@ -140,7 +144,7 @@ function exportReadiness() {
 function syncSourceFeedback() {
   const readiness = exportReadiness();
   const totalMessage = readiness.code === 'total' ? readiness.reason : '';
-  const message = sourceFeedbackMessage || totalMessage || '拖入 3 个文件，或在对应槽位单独替换';
+  const message = sourceFeedbackMessage || totalMessage || '拖入 3 个文件；载入后可拖动槽位调整顺序';
   sourceFeedback.textContent = message;
   sourceFeedback.classList.toggle('error', Boolean(sourceFeedbackMessage || totalMessage));
 }
@@ -163,6 +167,12 @@ function syncActionAvailability() {
   resetButtons.forEach((button, index) => {
     button.disabled = busy || !slots[index].video;
     button.setAttribute('aria-disabled', String(button.disabled));
+  });
+  slotEls.forEach((slot, index) => {
+    const reorderable = !busy && Boolean(slots[index].video);
+    slot.draggable = reorderable;
+    slot.classList.toggle('reorderable', reorderable);
+    slot.title = reorderable ? '拖动调整上、中、下顺序' : '';
   });
   exportBlockReason.textContent = busy
     ? (sourceLoading ? '正在验证视频，当前素材会保留到验证完成。' : '正在处理，请稍候。')
@@ -285,14 +295,32 @@ function setSegmentStart(index, value) {
   return getStart(index);
 }
 
+function applySegmentStartValues(values) {
+  startSliders.forEach((slider, index) => {
+    const state = getSegmentSliderState({
+      duration: slots[index].duration,
+      clipLength: getClipLength(),
+      startMilliseconds: values[index]
+    });
+    slider.max = String(state.maxMilliseconds);
+    slider.value = String(state.valueMilliseconds);
+  });
+}
+
 function syncLabels() {
   startSliders.forEach((slider, index) => {
     const maxStart = getMaxSegmentStart({
       duration: slots[index].duration,
       clipLength: getClipLength()
     });
-    slider.max = String(Math.max(0, Math.round(maxStart * 1000)));
-    const start = setSegmentStart(index, Number(slider.value) / 1000);
+    const sliderState = getSegmentSliderState({
+      duration: slots[index].duration,
+      clipLength: getClipLength(),
+      startMilliseconds: slider.value
+    });
+    slider.max = String(sliderState.maxMilliseconds);
+    slider.value = String(sliderState.valueMilliseconds);
+    const start = getStart(index);
     const end = getSegmentEnd({
       duration: slots[index].duration,
       start,
@@ -463,6 +491,58 @@ async function resetSlot(index) {
   }
 
   setStatus(`已清空${videoPositionLabels[index]}视频，其余素材和设置已保留。`);
+  return true;
+}
+
+async function reorderSlots(fromIndex, toIndex) {
+  if (sourceLoading
+    || processing
+    || fromIndex === toIndex
+    || !slots[fromIndex]?.video
+    || toIndex < 0
+    || toIndex >= slots.length) return false;
+
+  const wasPlaying = playing;
+  const movedName = slots[fromIndex].file?.name || `${videoPositionLabels[fromIndex]}视频`;
+  const previousSlots = slots;
+  const previousStarts = startSliders.map(slider => slider.value);
+  const previousCaptions = captionInputs.map(input => input.value);
+  const previousErrors = slotErrors.slice();
+  pausePreview('正在调整素材顺序…');
+
+  const reordered = reorderSlotState({
+    slots,
+    starts: previousStarts,
+    captions: previousCaptions,
+    errors: previousErrors
+  }, fromIndex, toIndex);
+  slots = reordered.slots;
+  const nextStarts = reordered.starts;
+  const nextCaptions = reordered.captions;
+  const nextErrors = reordered.errors;
+  applySegmentStartValues(nextStarts);
+  captionInputs.forEach((input, index) => { input.value = nextCaptions[index]; });
+  slotErrors.splice(0, slotErrors.length, ...nextErrors);
+  previewSeen = false;
+  syncCaptionCounts();
+  updateLoadHint();
+
+  try {
+    await resetSegments();
+  } catch (error) {
+    slots = previousSlots;
+    applySegmentStartValues(previousStarts);
+    captionInputs.forEach((input, index) => { input.value = previousCaptions[index]; });
+    slotErrors.splice(0, slotErrors.length, ...previousErrors);
+    syncCaptionCounts();
+    updateLoadHint();
+    await resetSegments().catch(() => drawFrame());
+    await restorePlayback(wasPlaying);
+    throw new Error('素材顺序调整失败，原顺序和编辑设置已保留。');
+  }
+
+  await restorePlayback(wasPlaying);
+  setStatus(`已将 ${movedName} 移至${videoPositionLabels[toIndex]}，片段时间和字幕已随素材移动。`);
   return true;
 }
 
@@ -899,15 +979,49 @@ function setDragState(element, isDragging) {
   element.classList.toggle('dragging', isDragging);
 }
 
+function isSlotReorder(event) {
+  return draggedSlotIndex >= 0 || Array.from(event.dataTransfer?.types || []).includes(SLOT_REORDER_TYPE);
+}
+
+function clearSlotDragState() {
+  slotEls.forEach(slot => {
+    slot.classList.remove('dragging', 'reordering', 'reorder-target');
+    slot.setAttribute('aria-grabbed', 'false');
+  });
+}
+
+slotEls.forEach((slotEl, index) => {
+  slotEl.addEventListener('dragstart', event => {
+    if (!slotEl.draggable || event.target.closest('button, input')) {
+      event.preventDefault();
+      return;
+    }
+    draggedSlotIndex = index;
+    event.dataTransfer.effectAllowed = 'move';
+    event.dataTransfer.setData(SLOT_REORDER_TYPE, String(index));
+    slotEl.classList.add('reordering');
+    slotEl.setAttribute('aria-grabbed', 'true');
+  });
+  slotEl.addEventListener('dragend', () => {
+    draggedSlotIndex = -1;
+    clearSlotDragState();
+  });
+});
+
 ['dragenter', 'dragover'].forEach(eventName => {
   dropZone.addEventListener(eventName, event => {
     event.preventDefault();
-    setDragState(dropZone, true);
+    if (!isSlotReorder(event)) setDragState(dropZone, true);
   });
   slotEls.forEach(slotEl => slotEl.addEventListener(eventName, event => {
     event.preventDefault();
     event.stopPropagation();
-    setDragState(slotEl, true);
+    if (isSlotReorder(event)) {
+      event.dataTransfer.dropEffect = 'move';
+      slotEl.classList.toggle('reorder-target', Number(slotEl.dataset.slot) !== draggedSlotIndex);
+    } else {
+      setDragState(slotEl, true);
+    }
   }));
 });
 ['dragleave', 'drop'].forEach(eventName => {
@@ -916,18 +1030,29 @@ function setDragState(element, isDragging) {
     setDragState(dropZone, false);
   });
   slotEls.forEach(slotEl => slotEl.addEventListener(eventName, event => {
+    if (eventName === 'dragleave' && event.relatedTarget && slotEl.contains(event.relatedTarget)) return;
     event.preventDefault();
     event.stopPropagation();
-    setDragState(slotEl, false);
+    slotEl.classList.remove('dragging', 'reorder-target');
   }));
 });
 dropZone.addEventListener('drop', event => {
-  if (!sourceLoading && !processing && event.dataTransfer?.files?.length) {
+  if (!isSlotReorder(event) && !sourceLoading && !processing && event.dataTransfer?.files?.length) {
     loadMultiple(event.dataTransfer.files).catch(error => setStatus(error.message, 'error'));
   }
 });
 slotEls.forEach((slotEl, index) => {
   slotEl.addEventListener('drop', event => {
+    if (isSlotReorder(event)) {
+      const transferredIndex = event.dataTransfer?.getData(SLOT_REORDER_TYPE);
+      const fromIndex = transferredIndex === '' || transferredIndex == null
+        ? draggedSlotIndex
+        : Number(transferredIndex);
+      draggedSlotIndex = -1;
+      clearSlotDragState();
+      reorderSlots(fromIndex, index).catch(error => setStatus(error.message, 'error'));
+      return;
+    }
     const file = event.dataTransfer?.files?.[0];
     if (!sourceLoading && !processing && file) {
       loadFileIntoSlot(index, file).catch(error => setStatus(error.message, 'error'));

@@ -255,7 +255,7 @@ These are product/UI tasks, not code-hardening tasks. Run them only when explici
 - Per-slot mute/audio policy if future exports include source audio.
 - Optional caption style controls.
 - Recent exports panel.
-- Drag-to-reorder slots.
+- Drag-to-reorder slots. Completed 2026-07-15: loaded sources can be moved between top, middle, and bottom while their segment start, caption, and validation state move with them; file-drop replacement remains separate.
 - Mobile Web layout.
 - 2K/4K output modes.
 - Batch generation.
