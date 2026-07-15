@@ -15,6 +15,7 @@ export const MAX_CLIP_SECONDS = 8;
 export const MAX_EXPORT_SECONDS = 10;
 export const MIN_CLIP_SECONDS = 0.3;
 export const MIN_EXPORT_SECONDS = 1;
+export const MAX_RECENT_EXPORTS = 5;
 
 export const CAPTION_MAX = 18;
 // Must stay byte-identical to the CAPTION_RE definition in server-core.js.
@@ -53,6 +54,26 @@ export function formatVideoMeta(video) {
   const width = Number(video?.videoWidth) || 0;
   const height = Number(video?.videoHeight) || 0;
   return width && height ? `${width}x${height}` : '读取中';
+}
+
+export function buildRecentExportMeta({ mode, resolution, frameRate, exportLength, size }) {
+  const width = Number(resolution) === 720 ? 720 : 1080;
+  const height = width === 720 ? 1280 : 1920;
+  const sizeText = formatSize(Math.max(0, Number(size) || 0));
+  if (mode === 'image') return `${width}×${height} · PNG · ${sizeText}`;
+  const fps = Number(frameRate) === 60 ? 60 : 30;
+  const duration = normalizeExportLength(exportLength);
+  return `${width}×${height} · ${fps}fps · ${duration}s · ${sizeText}`;
+}
+
+export function prependRecentExport(records, record, limit = MAX_RECENT_EXPORTS) {
+  const current = Array.isArray(records) ? records : [];
+  const safeLimit = Math.max(1, Math.floor(Number(limit) || MAX_RECENT_EXPORTS));
+  const combined = [record, ...current];
+  return {
+    records: combined.slice(0, safeLimit),
+    removed: combined.slice(safeLimit)
+  };
 }
 
 export function normalizeClipLength(value) {

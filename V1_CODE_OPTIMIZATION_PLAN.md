@@ -254,7 +254,7 @@ These are product/UI tasks, not code-hardening tasks. Run them only when explici
 - Per-slot reset button. Completed 2026-07-15: each ready source slot can be cleared independently, releasing its browser resources and resetting only that slot's timing/caption state.
 - Per-slot mute/audio policy if future exports include source audio.
 - Optional caption style controls.
-- Recent exports panel.
+- Recent exports panel. Completed 2026-07-15: the current page session keeps the newest five MP4/PNG blobs with output facts and one-click re-download, revoking evicted and unload-time object URLs.
 - Drag-to-reorder slots. Completed 2026-07-15: loaded sources can be moved between top, middle, and bottom while their segment start, caption, and validation state move with them; file-drop replacement remains separate.
 - Mobile Web layout.
 - 2K/4K output modes.

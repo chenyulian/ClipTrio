@@ -5,6 +5,7 @@ import {
   buildChecklistText,
   buildExportModeView,
   buildLoadHint,
+  buildRecentExportMeta,
   buildSlotMeta,
   CAPTION_MAX,
   CAPTION_RE,
@@ -25,6 +26,7 @@ import {
   isReady,
   labels,
   MAX_EXPORT_SECONDS,
+  MAX_RECENT_EXPORTS,
   MAX_TOTAL_BYTES,
   MAX_TOTAL_MB,
   MAX_VIDEO_BYTES,
@@ -35,6 +37,7 @@ import {
   normalizeExportLength,
   normalizeSegmentStart,
   projectedTotalBytes,
+  prependRecentExport,
   readyCount,
   removeSlotAt,
   reorderSlotState,
@@ -90,6 +93,26 @@ test('formatVideoMeta returns resolution or 读取中', () => {
   assert.equal(formatVideoMeta({ videoWidth: 0, videoHeight: 0 }), '读取中');
   assert.equal(formatVideoMeta({}), '读取中');
   assert.equal(formatVideoMeta(null), '读取中');
+});
+
+test('recent export metadata distinguishes MP4 and PNG output facts', () => {
+  assert.equal(buildRecentExportMeta({
+    mode: 'video', resolution: 1080, frameRate: 60, exportLength: 5, size: 12 * 1024 * 1024
+  }), '1080×1920 · 60fps · 5s · 12MB');
+  assert.equal(buildRecentExportMeta({
+    mode: 'image', resolution: 720, frameRate: 60, exportLength: 9, size: 512 * 1024
+  }), '720×1280 · PNG · 0.5MB');
+});
+
+test('prependRecentExport keeps newest records and returns evicted resources', () => {
+  const existing = Array.from({ length: MAX_RECENT_EXPORTS }, (_, index) => ({ id: index }));
+  const next = { id: 'new' };
+  const result = prependRecentExport(existing, next);
+  assert.equal(result.records.length, MAX_RECENT_EXPORTS);
+  assert.equal(result.records[0], next);
+  assert.deepEqual(result.records.slice(1).map(record => record.id), [0, 1, 2, 3]);
+  assert.deepEqual(result.removed.map(record => record.id), [4]);
+  assert.deepEqual(existing.map(record => record.id), [0, 1, 2, 3, 4]);
 });
 
 test('normalizeClipLength and normalizeExportLength clamp to constants', () => {

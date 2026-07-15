@@ -704,6 +704,97 @@
       text-align: right;
     }
 
+    .recent-exports-section { position: relative; }
+
+    .recent-toggle {
+      min-height: 26px;
+      border-color: transparent;
+      background: var(--surface-2);
+      color: var(--accent-dark);
+      font-size: 10px;
+      padding: 0 8px;
+    }
+
+    .recent-toggle[aria-expanded="true"] { border-color: #c8bdf0; background: var(--accent-soft); }
+
+    .recent-popover {
+      position: absolute;
+      z-index: 20;
+      right: 0;
+      top: 44px;
+      width: 100%;
+      max-height: 240px;
+      overflow: auto;
+      border: 1px solid #cbc2bd;
+      border-radius: 8px;
+      background: var(--surface);
+      box-shadow: 0 14px 30px rgba(54, 43, 38, .16);
+      padding: 10px;
+    }
+
+    .recent-popover.hidden { display: none; }
+
+    .recent-popover-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      margin-bottom: 8px;
+      color: var(--ink);
+      font-size: 11px;
+      font-weight: 700;
+    }
+
+    .recent-close {
+      width: 24px;
+      min-height: 24px;
+      border-color: transparent;
+      padding: 0;
+      color: var(--soft);
+    }
+
+    .recent-empty {
+      padding: 12px 4px;
+      color: var(--muted);
+      font-size: 11px;
+      line-height: 1.45;
+      text-align: center;
+    }
+
+    .recent-list { display: grid; gap: 6px; }
+
+    .recent-item {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 8px;
+      align-items: center;
+      border: 1px solid var(--line);
+      border-radius: 7px;
+      background: var(--surface-2);
+      padding: 8px;
+    }
+
+    .recent-item-text { min-width: 0; }
+    .recent-item-title { overflow: hidden; color: var(--ink); font-size: 11px; font-weight: 700; text-overflow: ellipsis; white-space: nowrap; }
+    .recent-item-meta { margin-top: 2px; overflow: hidden; color: var(--muted); font-size: 10px; text-overflow: ellipsis; white-space: nowrap; }
+
+    .recent-download {
+      min-height: 28px;
+      display: inline-grid;
+      place-items: center;
+      border: 1px solid #c8bdf0;
+      border-radius: 6px;
+      background: var(--surface);
+      color: var(--accent-dark);
+      font-size: 10px;
+      font-weight: 650;
+      padding: 0 8px;
+      text-decoration: none;
+      white-space: nowrap;
+    }
+
+    .recent-download:hover { background: var(--accent-soft); }
+
     .actions { display: grid; gap: 9px; margin-top: 12px; }
     .actions button { min-height: 42px; }
 
@@ -967,12 +1058,17 @@
           </div>
         </div>
 
-        <div class="section">
-          <div class="section-title">文件与输出</div>
+        <div class="section recent-exports-section" id="recentExportsSection">
+          <div class="section-title">文件与输出 <button class="recent-toggle" id="recentExportsToggle" type="button" aria-expanded="false" aria-controls="recentExportsPanel">最近导出 0</button></div>
           <div class="facts">
             <div class="fact"><strong id="factSource">0/3 视频</strong><span>素材状态</span></div>
             <div class="fact"><strong id="factOutput">5 秒 MP4</strong><span id="factOutputMeta">1080 × 1920 / 30fps</span></div>
             <div class="fact"><strong id="factLimit">≤ 120MB</strong><span>总量上限 380MB</span></div>
+          </div>
+          <div class="recent-popover hidden" id="recentExportsPanel" role="region" aria-label="最近导出记录">
+            <div class="recent-popover-head"><span>本次打开页面的导出</span><button class="recent-close" id="recentExportsClose" type="button" aria-label="关闭最近导出" title="关闭">×</button></div>
+            <div class="recent-empty" id="recentExportsEmpty">完成导出后，可在这里再次下载最近 5 个文件。</div>
+            <div class="recent-list" id="recentExportsList"></div>
           </div>
         </div>
 

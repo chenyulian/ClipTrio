@@ -2,6 +2,7 @@ import {
   buildChecklistText,
   buildExportModeView,
   buildLoadHint,
+  buildRecentExportMeta,
   buildSlotMeta,
   clamp,
   createEmptySlot,
@@ -18,6 +19,7 @@ import {
   labels,
   MAX_TOTAL_BYTES,
   MAX_VIDEO_SECONDS,
+  prependRecentExport,
   normalizeClipLength,
   normalizeExportLength,
   normalizeSegmentStart,
@@ -52,6 +54,12 @@ const previewProgress = document.getElementById('previewProgress');
 const downloadBtn = document.getElementById('download');
 const multiFiles = document.getElementById('multiFiles');
 const multiPickButton = document.getElementById('multiPickButton');
+const recentExportsSection = document.getElementById('recentExportsSection');
+const recentExportsToggle = document.getElementById('recentExportsToggle');
+const recentExportsPanel = document.getElementById('recentExportsPanel');
+const recentExportsClose = document.getElementById('recentExportsClose');
+const recentExportsEmpty = document.getElementById('recentExportsEmpty');
+const recentExportsList = document.getElementById('recentExportsList');
 const exportModeVideo = document.getElementById('exportModeVideo');
 const exportModeImage = document.getElementById('exportModeImage');
 const exportLengthRow = document.getElementById('exportLengthRow');
@@ -93,6 +101,7 @@ let processing = false;
 let sourceLoading = false;
 let sourceFeedbackMessage = '';
 let draggedSlotIndex = -1;
+let recentExports = [];
 const slotErrors = ['', '', ''];
 const SLOT_REORDER_TYPE = 'application/x-cliptrio-slot';
 
@@ -105,6 +114,66 @@ function setProgress(percent = 0, mode = 'hidden') {
   progressEl.classList.toggle('show', mode !== 'hidden');
   progressEl.classList.toggle('indeterminate', mode === 'indeterminate');
   progressBar.style.width = mode === 'determinate' ? `${clamp(percent, 0, 100)}%` : '';
+}
+
+function setRecentExportsOpen(isOpen) {
+  recentExportsPanel.classList.toggle('hidden', !isOpen);
+  recentExportsToggle.setAttribute('aria-expanded', String(isOpen));
+}
+
+function formatRecentExportTime(timestamp) {
+  const date = new Date(timestamp);
+  return `${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`;
+}
+
+function renderRecentExports() {
+  recentExportsToggle.textContent = `最近导出 ${recentExports.length}`;
+  recentExportsEmpty.hidden = recentExports.length > 0;
+  recentExportsList.replaceChildren();
+
+  recentExports.forEach(record => {
+    const item = document.createElement('div');
+    item.className = 'recent-item';
+    const text = document.createElement('div');
+    text.className = 'recent-item-text';
+    const title = document.createElement('div');
+    title.className = 'recent-item-title';
+    title.textContent = `${record.mode === 'image' ? 'PNG 图片' : 'MP4 视频'} · ${formatRecentExportTime(record.createdAt)}`;
+    const meta = document.createElement('div');
+    meta.className = 'recent-item-meta';
+    meta.textContent = record.meta;
+    const download = document.createElement('a');
+    download.className = 'recent-download';
+    download.href = record.url;
+    download.download = record.filename;
+    download.textContent = '再次下载';
+    text.append(title, meta);
+    item.append(text, download);
+    recentExportsList.append(item);
+  });
+}
+
+function saveExportBlob(blob, details) {
+  const createdAt = Date.now();
+  const extension = details.mode === 'image' ? 'png' : 'mp4';
+  const filename = `clip-trio-${createdAt}.${extension}`;
+  const url = URL.createObjectURL(blob);
+  const result = prependRecentExport(recentExports, {
+    ...details,
+    createdAt,
+    filename,
+    url,
+    meta: buildRecentExportMeta({ ...details, size: blob.size })
+  });
+  recentExports = result.records;
+  result.removed.forEach(record => URL.revokeObjectURL(record.url));
+  renderRecentExports();
+
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = filename;
+  link.click();
+  return filename;
 }
 
 function setProcessing(isProcessing) {
@@ -804,13 +873,14 @@ async function exportMp4() {
       xhr.send(form);
     });
 
-    const link = document.createElement('a');
-    link.href = URL.createObjectURL(blob);
-    link.download = `clip-trio-${Date.now()}.mp4`;
-    link.click();
-    setTimeout(() => URL.revokeObjectURL(link.href), 1500);
+    saveExportBlob(blob, {
+      mode: 'video',
+      resolution: outputResolution,
+      frameRate: outputFrameRate,
+      exportLength: getExportLength()
+    });
     exportSucceeded = true;
-    setStatus('MP4 导出完成。', 'success');
+    setStatus('MP4 导出完成，已加入最近导出。', 'success');
     setProgress(100, 'determinate');
   } catch (error) {
     setStatus(error.message || '导出失败。', 'error');
@@ -837,20 +907,43 @@ async function exportPng() {
     const blob = await new Promise((resolve, reject) => {
       canvas.toBlob(result => result ? resolve(result) : reject(new Error('图片生成失败，请重试。')), 'image/png');
     });
-    const link = document.createElement('a');
-    link.href = URL.createObjectURL(blob);
-    link.download = `clip-trio-${Date.now()}.png`;
-    link.click();
-    setTimeout(() => URL.revokeObjectURL(link.href), 1500);
+    saveExportBlob(blob, {
+      mode: 'image',
+      resolution: outputResolution,
+      frameRate: outputFrameRate,
+      exportLength: getExportLength()
+    });
     previewSeen = true;
     updateChecks();
-    setStatus('三拼图片导出完成。', 'success');
+    setStatus('三拼图片导出完成，已加入最近导出。', 'success');
   } catch (error) {
     setStatus(error.message || '图片导出失败。', 'error');
   } finally {
     setProcessing(false);
   }
 }
+
+recentExportsToggle.addEventListener('click', () => {
+  setRecentExportsOpen(recentExportsPanel.classList.contains('hidden'));
+});
+recentExportsClose.addEventListener('click', () => {
+  setRecentExportsOpen(false);
+  recentExportsToggle.focus();
+});
+document.addEventListener('click', event => {
+  if (!recentExportsPanel.classList.contains('hidden') && !recentExportsSection.contains(event.target)) {
+    setRecentExportsOpen(false);
+  }
+});
+document.addEventListener('keydown', event => {
+  if (event.key === 'Escape' && !recentExportsPanel.classList.contains('hidden')) {
+    setRecentExportsOpen(false);
+    recentExportsToggle.focus();
+  }
+});
+window.addEventListener('beforeunload', () => {
+  recentExports.forEach(record => URL.revokeObjectURL(record.url));
+});
 
 multiFiles.addEventListener('change', event => {
   const files = Array.from(event.target.files || []);
@@ -1060,6 +1153,7 @@ slotEls.forEach((slotEl, index) => {
   });
 });
 
+renderRecentExports();
 syncLabels();
 syncCaptionCounts();
 syncExportMode('video');
