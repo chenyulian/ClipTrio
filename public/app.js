@@ -57,6 +57,10 @@ const progressBar = document.getElementById('progressBar');
 const exportMetrics = document.getElementById('exportMetrics');
 const metricDuration = document.getElementById('metricDuration');
 const metricMemory = document.getElementById('metricMemory');
+const metricCore = document.getElementById('metricCore');
+const metricSegments = document.getElementById('metricSegments');
+const metricCompose = document.getElementById('metricCompose');
+const metricOutput = document.getElementById('metricOutput');
 const cancelExportBtn = document.getElementById('cancelExport');
 const factSource = document.getElementById('factSource');
 const factOutput = document.getElementById('factOutput');
@@ -85,6 +89,7 @@ const resolutionButtons = Array.from(document.querySelectorAll('[data-resolution
 const frameRateButtons = Array.from(document.querySelectorAll('[data-frame-rate]'));
 const codecValue = document.getElementById('codecValue');
 const wasmPrototypeNote = document.getElementById('wasmPrototypeNote');
+const wasmRuntimeStatus = document.getElementById('wasmRuntimeStatus');
 const dropZone = document.getElementById('dropZone');
 const fileInputs = ['fileA', 'fileB', 'fileC'].map(id => document.getElementById(id));
 const nameEls = ['nameA', 'nameB', 'nameC'].map(id => document.getElementById(id));
@@ -121,6 +126,8 @@ let sourceFeedbackMessage = '';
 let draggedSlotIndex = -1;
 let recentExports = [];
 const browserFfmpegRenderer = new BrowserFfmpegRenderer();
+const runtimeCacheReadyPromise = registerRuntimeCache();
+let browserRuntimeWarmupPromise = null;
 let wasmExportActive = false;
 let wasmExportCancelRequested = false;
 const slotErrors = ['', '', ''];
@@ -141,6 +148,11 @@ function beginPerformanceMeasurement() {
   exportMetrics.hidden = false;
   metricDuration.textContent = '计量中';
   metricMemory.textContent = '计量中';
+  metricCore.textContent = '等待中';
+  metricSegments.textContent = '等待中';
+  metricSegments.removeAttribute('title');
+  metricCompose.textContent = '等待中';
+  metricOutput.textContent = '等待中';
   const startedAt = performance.now();
   let peakMemoryBytes = readUsedJsHeapSize();
   const sample = () => {
@@ -157,6 +169,59 @@ function beginPerformanceMeasurement() {
     metricMemory.textContent = formatMemoryBytes(peakMemoryBytes);
     return { elapsedMs, peakMemoryBytes };
   };
+}
+
+async function registerRuntimeCache() {
+  if (!('serviceWorker' in navigator)) return false;
+  try {
+    await navigator.serviceWorker.register('./sw.js', { scope: './' });
+    await navigator.serviceWorker.ready;
+    if (!navigator.serviceWorker.controller) {
+      await new Promise(resolve => {
+        const timeoutId = window.setTimeout(resolve, 2000);
+        navigator.serviceWorker.addEventListener('controllerchange', () => {
+          window.clearTimeout(timeoutId);
+          resolve();
+        }, { once: true });
+      });
+    }
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+function warmBrowserRuntime() {
+  if (browserFfmpegRenderer.isLoaded()) {
+    wasmRuntimeStatus.textContent = '浏览器编码核心已就绪，后续导出可直接开始。';
+    return Promise.resolve();
+  }
+  if (browserRuntimeWarmupPromise) return browserRuntimeWarmupPromise;
+
+  wasmRuntimeStatus.textContent = '正在后台加载浏览器编码核心，不影响素材编辑…';
+  browserRuntimeWarmupPromise = (async () => {
+    await runtimeCacheReadyPromise;
+    const loadMs = await browserFfmpegRenderer.ensureLoaded();
+    wasmRuntimeStatus.textContent = `浏览器编码核心已就绪（${formatDurationMs(loadMs)}），后续导出可直接开始。`;
+  })().catch(() => {
+    wasmRuntimeStatus.textContent = '编码核心后台加载未完成，将在导出时自动重试。';
+  }).finally(() => {
+    browserRuntimeWarmupPromise = null;
+  });
+  return browserRuntimeWarmupPromise;
+}
+
+function showBrowserRenderTimings(result) {
+  const segmentMs = Array.isArray(result.segmentMs) ? result.segmentMs : [];
+  const segmentTotalMs = segmentMs.reduce((sum, value) => sum + value, 0);
+  metricCore.textContent = result.loadMs > 0 ? formatDurationMs(result.loadMs) : '已预热';
+  metricSegments.textContent = formatDurationMs(segmentTotalMs);
+  metricSegments.title = segmentMs
+    .map((value, index) => `${videoPositionLabels[index]} ${formatDurationMs(value)}`)
+    .join(' · ');
+  metricCompose.textContent = formatDurationMs(result.finalEncodeMs);
+  metricOutput.textContent = formatDurationMs(result.outputReadMs);
+  return segmentTotalMs;
 }
 
 async function createCaptionOverlayData() {
@@ -835,6 +900,7 @@ async function loadFileIntoSlot(index, file) {
     setStatus(finalMessage, finalState);
   }
 
+  if (succeeded) void warmBrowserRuntime();
   return succeeded;
 }
 
@@ -901,6 +967,7 @@ async function loadMultiple(files) {
     setStatus(finalMessage, finalState);
   }
 
+  if (succeeded) void warmBrowserRuntime();
   return succeeded;
 }
 
@@ -939,15 +1006,22 @@ async function exportMp4() {
     });
     metrics = finishMeasurement();
     finishMeasurement = null;
+    const segmentTotalMs = showBrowserRenderTimings(result);
 
     saveExportBlob(result.blob, {
       mode: 'video',
       resolution: BROWSER_VIDEO_RESOLUTION,
       frameRate: BROWSER_VIDEO_FRAME_RATE,
       exportLength: getExportLength(),
-      performanceText: `${formatDurationMs(metrics.elapsedMs)} · JS 堆峰值 ${formatMemoryBytes(metrics.peakMemoryBytes)}`
+      performanceText: [
+        `总计 ${formatDurationMs(metrics.elapsedMs)}`,
+        `片段 ${formatDurationMs(segmentTotalMs)}`,
+        `合成 ${formatDurationMs(result.finalEncodeMs)}`,
+        `JS 堆峰值 ${formatMemoryBytes(metrics.peakMemoryBytes)}`
+      ].join(' · ')
     });
     exportSucceeded = true;
+    wasmRuntimeStatus.textContent = '浏览器编码核心已就绪，后续导出可直接开始。';
     setStatus('浏览器 MP4 导出完成，视频未上传，已加入最近导出。', 'success');
     setProgress(100, 'determinate');
   } catch (error) {
@@ -959,6 +1033,9 @@ async function exportMp4() {
     setProgress(0, 'hidden');
   } finally {
     if (finishMeasurement) finishMeasurement();
+    if (browserFfmpegRenderer.isLoaded()) {
+      wasmRuntimeStatus.textContent = '浏览器编码核心已就绪，后续导出可直接开始。';
+    }
     wasmExportActive = false;
     wasmExportCancelRequested = false;
     setProcessing(false);
@@ -1140,6 +1217,7 @@ cancelExportBtn.addEventListener('click', () => {
   cancelExportBtn.disabled = true;
   setStatus('正在取消浏览器导出…', 'busy');
   browserFfmpegRenderer.cancel();
+  wasmRuntimeStatus.textContent = '编码核心已释放，将在下次导出时重新加载。';
 });
 
 function setDragState(element, isDragging) {

@@ -25,11 +25,17 @@ validation. PNG export still supports both existing resolutions.
   pinned in `package-lock.json`.
 - Browser assets are copied into `public/vendor/` by `npm run vendor:ffmpeg` so
   GitHub Pages does not depend on a third-party runtime CDN.
+- After the first valid source is selected, the single-thread core starts
+  loading in the background. A versioned service-worker cache stores the core
+  JavaScript and WASM assets on demand so later visits do not normally download
+  the approximately 32MB runtime again. Bump the cache version in `public/sw.js`
+  whenever either core asset changes.
 - Source `File` objects are mounted with WORKERFS instead of being copied into
   MEMFS before processing.
 - Each selected segment is cropped to 720 × 428 and encoded with the ultrafast
   preset. The three small segments are then looped, stacked, cropped to exactly
-  720 × 1280, and encoded into the final MP4.
+  720 × 1280, and encoded into the final MP4 with the speed-oriented
+  `superfast` preset and CRF 21.
 - Captions and gradients are drawn into one transparent Canvas PNG and overlaid
   during final encoding. This avoids shipping a large CJK font into WASM and
   keeps caption placement aligned with the preview renderer.
@@ -38,8 +44,8 @@ validation. PNG export still supports both existing resolutions.
 
 ## Performance measurements
 
-The export panel records total wall-clock time from the export click until
-success, failure, or cancellation. In Chromium, it also samples
+The export panel records total wall-clock time plus core loading, each source
+segment, final composition, and output-read timing. In Chromium, it also samples
 `performance.memory.usedJSHeapSize` every 250ms and reports the largest value.
 
 The displayed memory number is explicitly a **JS heap estimate**. It may omit
@@ -62,10 +68,12 @@ Open `http://127.0.0.1:4173/`, select three short fixtures, preview the selected
 segments, and export MP4. Verify:
 
 1. The core loads from `/vendor/ffmpeg-core/` with no CORS or MIME error.
-2. Status advances through three preparation stages and final encoding.
-3. Cancel preserves all sources, starts, captions, and export settings.
-4. Success downloads a non-empty MP4 and shows elapsed time and heap estimate.
-5. FFprobe reports 720 × 1280, 30fps, H.264, AAC, and yuv420p.
+2. Selecting a valid source starts background core loading; after the first
+   cached load, a refresh can serve both core assets through `public/sw.js`.
+3. Status advances through three preparation stages and final encoding.
+4. Cancel preserves all sources, starts, captions, and export settings.
+5. Success downloads a non-empty MP4 and shows stage timings and heap estimate.
+6. FFprobe reports 720 × 1280, 30fps, H.264, AAC, and yuv420p.
 
 The browser-only static server uses port `4173` by default. Override it without
 affecting the existing backend development server:

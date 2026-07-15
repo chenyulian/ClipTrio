@@ -8,7 +8,7 @@
     "dev": "node server.js",
     "start:wasm": "node static-server.js",
     "test": "node --test",
-    "check": "node --check server.js && node --check static-server.js && node --check server-core.js && node --check server-http.js && node --check server-process.js && node --check public/app-core.js && node --check public/composition-core.js && node --check public/canvas-renderer.js && node --check public/browser-render-core.js && node --check public/browser-ffmpeg-renderer.js && node --check public/app.js && node --check scripts/media-tools.js && node --check scripts/smoke-core.js && node --check scripts/generate-fixtures.js && node --check scripts/smoke-render.js && node --check scripts/sync-ffmpeg-vendor.js",
+    "check": "node --check server.js && node --check static-server.js && node --check server-core.js && node --check server-http.js && node --check server-process.js && node --check public/app-core.js && node --check public/composition-core.js && node --check public/canvas-renderer.js && node --check public/browser-render-core.js && node --check public/browser-ffmpeg-renderer.js && node --check public/app.js && node --check public/sw.js && node --check scripts/media-tools.js && node --check scripts/smoke-core.js && node --check scripts/generate-fixtures.js && node --check scripts/smoke-render.js && node --check scripts/sync-ffmpeg-vendor.js",
     "vendor:ffmpeg": "node scripts/sync-ffmpeg-vendor.js",
     "fixtures": "node scripts/generate-fixtures.js",
     "smoke:render": "node scripts/smoke-render.js",

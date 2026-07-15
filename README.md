@@ -49,6 +49,8 @@ npm run vendor:ffmpeg
 
 `@ffmpeg/core` 的 WASM 文件约 32MB，首次导出需要先加载。它以 GPL-2.0-or-later 发布，分发说明见 [`public/THIRD_PARTY_NOTICES.md`](./public/THIRD_PARTY_NOTICES.md)。完整实现、验证步骤和性能指标限制见 [`BROWSER_WASM_PROTOTYPE.md`](./BROWSER_WASM_PROTOTYPE.md)。
 
+选择首个有效视频后，页面会在后台预热编码核心；核心文件由版本化 Service Worker 按需持久缓存。视频最终合成采用偏速度的 `superfast + CRF 21`，导出状态会分别记录核心加载、三个片段、最终合成、输出读取和 JS 堆峰值。
+
 ### GitHub Pages
 
 纯前端版的运行文件全部位于 `public/`，可以通过 GitHub Actions 发布到 GitHub Pages。部署时必须保持目录结构，并确保 `ffmpeg-core.wasm` 以 `application/wasm` 返回。当前仓库尚未添加 Pages 发布工作流。

@@ -851,6 +851,7 @@
       font-size: 10px;
       line-height: 1.45;
     }
+    .wasm-runtime-status { display: block; margin-top: 4px; color: var(--muted); font-size: 9px; line-height: 1.35; }
 
     .wasm-advisory {
       display: grid;
@@ -1101,7 +1102,10 @@
               <div class="fixed-control" id="codecValue">H.264 MP4</div>
             </div>
             <div class="mode-dependent" id="wasmPrototypeNote">
-              <div class="prototype-note">浏览器本地编码技术验证：固定 720×1280 / 30fps，视频不会上传。</div>
+              <div class="prototype-note">
+                浏览器本地编码技术验证：固定 720×1280 / 30fps，视频不会上传。
+                <span class="wasm-runtime-status" id="wasmRuntimeStatus" aria-live="polite">选择素材后将后台加载并缓存编码核心。</span>
+              </div>
               <div class="wasm-advisory" role="note">
                 <strong>本地导出速度较慢</strong>
                 <span>视频将在你的浏览器中编码，通常需要较长等待。若更看重导出速度，推荐使用服务器部署版。</span>
@@ -1142,6 +1146,10 @@
             </div>
             <div class="export-metrics" id="exportMetrics" hidden>
               <div class="export-metric"><span>本次总耗时</span><strong id="metricDuration">计量中</strong></div>
+              <div class="export-metric"><span>核心加载</span><strong id="metricCore">等待中</strong></div>
+              <div class="export-metric"><span>三个片段</span><strong id="metricSegments">等待中</strong></div>
+              <div class="export-metric"><span>最终合成</span><strong id="metricCompose">等待中</strong></div>
+              <div class="export-metric"><span>读取输出</span><strong id="metricOutput">等待中</strong></div>
               <div class="export-metric"><span>JS 堆峰值</span><strong id="metricMemory">计量中</strong></div>
               <div class="export-metrics-note" id="metricMemoryNote">内存为浏览器可提供的 JS 堆估算，不代表整个标签页或系统峰值。</div>
             </div>

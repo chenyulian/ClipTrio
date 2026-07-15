@@ -40,6 +40,9 @@ test('final browser render loops three segments and maps the silent audio input'
   assert.deepEqual(withoutCaption.slice(withoutCaption.indexOf('-map'), withoutCaption.indexOf('-map') + 4), [
     '-map', '[v]', '-map', '3:a'
   ]);
+  assert.deepEqual(withoutCaption.slice(withoutCaption.indexOf('-crf'), withoutCaption.indexOf('-crf') + 4), [
+    '-crf', '21', '-preset', 'superfast'
+  ]);
   assert.deepEqual(withoutCaption.slice(-2), ['+faststart', 'out.mp4']);
 
   const withCaption = buildBrowserFinalArgs({
