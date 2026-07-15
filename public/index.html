@@ -830,6 +830,29 @@
     .status.success { color: var(--accent-dark); }
     .status.busy { color: var(--ink); }
 
+    .prototype-note {
+      margin-top: 7px;
+      color: var(--muted);
+      font-size: 10px;
+      line-height: 1.45;
+    }
+
+    .export-metrics {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 8px;
+      margin-top: 9px;
+      padding-top: 9px;
+      border-top: 1px solid var(--line);
+    }
+
+    .export-metrics[hidden] { display: none; }
+
+    .export-metric { min-width: 0; }
+    .export-metric span { display: block; color: var(--muted); font-size: 9px; }
+    .export-metric strong { display: block; margin-top: 2px; overflow: hidden; color: var(--ink); font-size: 11px; text-overflow: ellipsis; white-space: nowrap; }
+    .export-metrics-note { grid-column: 1 / -1; color: var(--muted); font-size: 9px; line-height: 1.35; }
+
     .progress {
       display: none;
       margin-top: 9px;
@@ -1004,7 +1027,7 @@
         <button class="play-button" id="play" type="button" aria-label="播放预览" title="播放预览">▶</button>
         <span class="play-time" id="playTime">00:00.0 / 00:03.0</span>
         <input class="preview-range" id="previewProgress" type="range" min="0" max="1000" value="0" aria-label="预览播放进度">
-        <span class="transport-meta">1080 × 1920</span>
+        <span class="transport-meta" id="previewResolutionMeta">720 × 1280</span>
       </div>
     </main>
 
@@ -1031,21 +1054,22 @@
             <div class="setting-row">
               <span>分辨率</span>
               <div class="segmented" role="group" aria-label="导出分辨率">
-                <button class="active" type="button" data-resolution="1080" aria-pressed="true">1080 × 1920</button>
-                <button type="button" data-resolution="720" aria-pressed="false">720 × 1280</button>
+                <button type="button" data-resolution="1080" aria-pressed="false" disabled title="WASM 视频验证阶段暂不开放 1080p">1080 × 1920</button>
+                <button class="active" type="button" data-resolution="720" aria-pressed="true">720 × 1280</button>
               </div>
             </div>
             <div class="setting-row mode-dependent" id="frameRateRow">
               <span>帧率</span>
               <div class="segmented" role="group" aria-label="视频导出帧率">
                 <button class="active" type="button" data-frame-rate="30" aria-pressed="true">30fps</button>
-                <button type="button" data-frame-rate="60" aria-pressed="false">60fps</button>
+                <button type="button" data-frame-rate="60" aria-pressed="false" disabled title="WASM 视频验证阶段暂不开放 60fps">60fps</button>
               </div>
             </div>
             <div class="setting-row">
               <span>编码</span>
               <div class="fixed-control" id="codecValue">H.264 MP4</div>
             </div>
+            <div class="prototype-note mode-dependent" id="wasmPrototypeNote">浏览器本地编码技术验证：固定 720×1280 / 30fps，视频不会上传。</div>
           </div>
         </div>
 
@@ -1062,7 +1086,7 @@
           <div class="section-title">文件与输出 <button class="recent-toggle" id="recentExportsToggle" type="button" aria-expanded="false" aria-controls="recentExportsPanel">最近导出 0</button></div>
           <div class="facts">
             <div class="fact"><strong id="factSource">0/3 视频</strong><span>素材状态</span></div>
-            <div class="fact"><strong id="factOutput">5 秒 MP4</strong><span id="factOutputMeta">1080 × 1920 / 30fps</span></div>
+            <div class="fact"><strong id="factOutput">5 秒 MP4</strong><span id="factOutputMeta">720 × 1280 / 30fps</span></div>
             <div class="fact"><strong id="factLimit">≤ 120MB</strong><span>总量上限 380MB</span></div>
           </div>
           <div class="recent-popover hidden" id="recentExportsPanel" role="region" aria-label="最近导出记录">
@@ -1079,10 +1103,16 @@
             <div class="progress" id="progress">
               <div class="progress-bar" id="progressBar"></div>
             </div>
+            <div class="export-metrics" id="exportMetrics" hidden>
+              <div class="export-metric"><span>本次总耗时</span><strong id="metricDuration">计量中</strong></div>
+              <div class="export-metric"><span>JS 堆峰值</span><strong id="metricMemory">计量中</strong></div>
+              <div class="export-metrics-note" id="metricMemoryNote">内存为浏览器可提供的 JS 堆估算，不代表整个标签页或系统峰值。</div>
+            </div>
           </div>
           <div class="export-block-reason error" id="exportBlockReason">请选择上、中、下 3 个视频。</div>
           <div class="actions">
             <button id="download" class="primary" type="button">↓ 导出视频</button>
+            <button id="cancelExport" type="button" hidden>取消浏览器导出</button>
           </div>
         </div>
       </div>

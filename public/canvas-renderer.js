@@ -48,6 +48,15 @@ export function drawCaption(ctx, text, rect) {
   ctx.restore();
 }
 
+export function drawCaptionOverlay(canvas, ctx, captions, resolution) {
+  const geometry = configureOutputCanvas(canvas, resolution);
+  ctx.clearRect(0, 0, geometry.width, geometry.height);
+  getSectionRects(resolution).forEach((rect, index) => {
+    drawCaption(ctx, captions[index], rect);
+  });
+  return geometry;
+}
+
 export function drawPlaceholder(canvas, ctx, resolution) {
   const geometry = configureOutputCanvas(canvas, resolution);
   ctx.fillStyle = '#fffefd';

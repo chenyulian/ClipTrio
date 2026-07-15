@@ -21,8 +21,13 @@ const mimeTypes = {
   '.svg': 'image/svg+xml',
   '.png': 'image/png',
   '.ico': 'image/x-icon',
-  '.mp4': 'video/mp4'
+  '.mp4': 'video/mp4',
+  '.wasm': 'application/wasm'
 };
+
+export function getStaticContentType(filePath) {
+  return mimeTypes[path.extname(filePath).toLowerCase()] || 'application/octet-stream';
+}
 
 function abortError(message = 'Request aborted.') {
   const error = new Error(message);
@@ -289,8 +294,7 @@ export function createRequestHandler(options) {
       const filePath = resolveStaticPath(req.url, req.headers.host, publicDir);
       const stat = await fsp.stat(filePath);
       if (!stat.isFile()) throw renderRequestError('Not found', 404);
-      const ext = path.extname(filePath).toLowerCase();
-      res.writeHead(200, { 'content-type': mimeTypes[ext] || 'application/octet-stream' });
+      res.writeHead(200, { 'content-type': getStaticContentType(filePath) });
       await pipeline(createReadStream(filePath), res);
     } catch (error) {
       if (!res.headersSent && canWriteResponse(res)) {

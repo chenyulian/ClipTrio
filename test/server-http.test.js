@@ -118,6 +118,11 @@ test('health, static routing, method rejection, and path traversal are enforced 
   assert.match(page.headers['content-type'], /text\/html/);
   assert.match(page.body.toString(), /<title>test<\/title>/);
 
+  await fsp.writeFile(path.join(harness.publicDir, 'ffmpeg-core.wasm'), Buffer.from([0, 97, 115, 109]));
+  const wasm = await request(harness.port, { path: '/ffmpeg-core.wasm' });
+  assert.equal(wasm.status, 200);
+  assert.equal(wasm.headers['content-type'], 'application/wasm');
+
   const missing = await request(harness.port, { path: '/missing.js' });
   assert.equal(missing.status, 404);
 

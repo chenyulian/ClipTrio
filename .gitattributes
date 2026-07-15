@@ -1,0 +1,2 @@
+public/vendor/** -whitespace
+public/vendor/**/*.wasm binary

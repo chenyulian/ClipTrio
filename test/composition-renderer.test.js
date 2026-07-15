@@ -14,6 +14,7 @@ import {
 import {
   configureOutputCanvas,
   drawCaption,
+  drawCaptionOverlay,
   drawComposition
 } from '../public/canvas-renderer.js';
 
@@ -29,6 +30,7 @@ function createRecordingContext() {
     rect(...args) { calls.push(['rect', ...args]); },
     clip() { calls.push(['clip']); },
     drawImage(...args) { calls.push(['drawImage', ...args]); },
+    clearRect(...args) { calls.push(['clearRect', ...args]); },
     fillRect(...args) { calls.push(['fillRect', ...args]); },
     fillText(...args) { calls.push(['fillText', ...args]); },
     createLinearGradient(...args) {
@@ -105,6 +107,17 @@ test('Canvas caption keeps the centralized baseline and gradient contract', () =
     OUTPUT_WIDTH / 2,
     section.y + section.height - 48
   ]);
+});
+
+test('caption overlay uses the 720 video prototype geometry without drawing source frames', () => {
+  const canvas = { width: 0, height: 0 };
+  const ctx = createRecordingContext();
+  drawCaptionOverlay(canvas, ctx, ['TOP', '', 'BOTTOM'], 720);
+
+  assert.deepEqual(canvas, { width: 720, height: 1280 });
+  assert.deepEqual(ctx.calls[0], ['clearRect', 0, 0, 720, 1280]);
+  assert.equal(ctx.calls.filter(call => call[0] === 'fillText').length, 2);
+  assert.equal(ctx.calls.filter(call => call[0] === 'drawImage').length, 0);
 });
 
 test('configureOutputCanvas repairs stale backing-store dimensions before export', () => {

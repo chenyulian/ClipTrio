@@ -33,7 +33,19 @@ import {
   validateVideoFile,
   videoPositionLabels
 } from './app-core.js';
-import { drawComposition, drawPlaceholder as drawCanvasPlaceholder } from './canvas-renderer.js';
+import {
+  drawCaptionOverlay,
+  drawComposition,
+  drawPlaceholder as drawCanvasPlaceholder
+} from './canvas-renderer.js';
+import {
+  BROWSER_VIDEO_FRAME_RATE,
+  BROWSER_VIDEO_RESOLUTION,
+  formatDurationMs,
+  formatMemoryBytes,
+  readUsedJsHeapSize
+} from './browser-render-core.js';
+import { BrowserFfmpegRenderer } from './browser-ffmpeg-renderer.js';
 
 const canvas = document.getElementById('canvas');
 const ctx = canvas.getContext('2d');
@@ -42,6 +54,10 @@ const sourceFeedback = document.getElementById('sourceFeedback');
 const exportBlockReason = document.getElementById('exportBlockReason');
 const progressEl = document.getElementById('progress');
 const progressBar = document.getElementById('progressBar');
+const exportMetrics = document.getElementById('exportMetrics');
+const metricDuration = document.getElementById('metricDuration');
+const metricMemory = document.getElementById('metricMemory');
+const cancelExportBtn = document.getElementById('cancelExport');
 const factSource = document.getElementById('factSource');
 const factOutput = document.getElementById('factOutput');
 const factOutputMeta = document.getElementById('factOutputMeta');
@@ -51,6 +67,7 @@ const topLoadHint = document.getElementById('topLoadHint');
 const playBtn = document.getElementById('play');
 const playTime = document.getElementById('playTime');
 const previewProgress = document.getElementById('previewProgress');
+const previewResolutionMeta = document.getElementById('previewResolutionMeta');
 const downloadBtn = document.getElementById('download');
 const multiFiles = document.getElementById('multiFiles');
 const multiPickButton = document.getElementById('multiPickButton');
@@ -67,6 +84,7 @@ const frameRateRow = document.getElementById('frameRateRow');
 const resolutionButtons = Array.from(document.querySelectorAll('[data-resolution]'));
 const frameRateButtons = Array.from(document.querySelectorAll('[data-frame-rate]'));
 const codecValue = document.getElementById('codecValue');
+const wasmPrototypeNote = document.getElementById('wasmPrototypeNote');
 const dropZone = document.getElementById('dropZone');
 const fileInputs = ['fileA', 'fileB', 'fileC'].map(id => document.getElementById(id));
 const nameEls = ['nameA', 'nameB', 'nameC'].map(id => document.getElementById(id));
@@ -95,13 +113,16 @@ let playing = false;
 let previewSeen = false;
 let rafId = 0;
 let exportMode = 'video';
-let outputResolution = 1080;
+let outputResolution = BROWSER_VIDEO_RESOLUTION;
 let outputFrameRate = 30;
 let processing = false;
 let sourceLoading = false;
 let sourceFeedbackMessage = '';
 let draggedSlotIndex = -1;
 let recentExports = [];
+const browserFfmpegRenderer = new BrowserFfmpegRenderer();
+let wasmExportActive = false;
+let wasmExportCancelRequested = false;
 const slotErrors = ['', '', ''];
 const SLOT_REORDER_TYPE = 'application/x-cliptrio-slot';
 
@@ -114,6 +135,42 @@ function setProgress(percent = 0, mode = 'hidden') {
   progressEl.classList.toggle('show', mode !== 'hidden');
   progressEl.classList.toggle('indeterminate', mode === 'indeterminate');
   progressBar.style.width = mode === 'determinate' ? `${clamp(percent, 0, 100)}%` : '';
+}
+
+function beginPerformanceMeasurement() {
+  exportMetrics.hidden = false;
+  metricDuration.textContent = '计量中';
+  metricMemory.textContent = '计量中';
+  const startedAt = performance.now();
+  let peakMemoryBytes = readUsedJsHeapSize();
+  const sample = () => {
+    const current = readUsedJsHeapSize();
+    if (current !== null) peakMemoryBytes = Math.max(peakMemoryBytes || 0, current);
+  };
+  const intervalId = window.setInterval(sample, 250);
+
+  return () => {
+    window.clearInterval(intervalId);
+    sample();
+    const elapsedMs = performance.now() - startedAt;
+    metricDuration.textContent = formatDurationMs(elapsedMs);
+    metricMemory.textContent = formatMemoryBytes(peakMemoryBytes);
+    return { elapsedMs, peakMemoryBytes };
+  };
+}
+
+async function createCaptionOverlayData() {
+  const captions = captionInputs.map(input => input.value.trim());
+  if (!captions.some(Boolean)) return null;
+  const overlayCanvas = document.createElement('canvas');
+  const overlayContext = overlayCanvas.getContext('2d');
+  drawCaptionOverlay(overlayCanvas, overlayContext, captions, BROWSER_VIDEO_RESOLUTION);
+  const blob = await new Promise((resolve, reject) => {
+    overlayCanvas.toBlob(result => result
+      ? resolve(result)
+      : reject(new Error('字幕图层生成失败，请重试。')), 'image/png');
+  });
+  return new Uint8Array(await blob.arrayBuffer());
 }
 
 function setRecentExportsOpen(isOpen) {
@@ -163,7 +220,9 @@ function saveExportBlob(blob, details) {
     createdAt,
     filename,
     url,
-    meta: buildRecentExportMeta({ ...details, size: blob.size })
+    meta: [buildRecentExportMeta({ ...details, size: blob.size }), details.performanceText]
+      .filter(Boolean)
+      .join(' · ')
   });
   recentExports = result.records;
   result.removed.forEach(record => URL.revokeObjectURL(record.url));
@@ -178,6 +237,8 @@ function saveExportBlob(blob, details) {
 
 function setProcessing(isProcessing) {
   processing = isProcessing;
+  cancelExportBtn.hidden = !(isProcessing && wasmExportActive);
+  cancelExportBtn.disabled = !(isProcessing && wasmExportActive);
   syncActionAvailability();
 }
 
@@ -227,8 +288,14 @@ function syncActionAvailability() {
   previewProgress.disabled = busy || !ready;
   exportModeVideo.disabled = busy;
   exportModeImage.disabled = busy;
-  resolutionButtons.forEach(button => { button.disabled = busy; });
-  frameRateButtons.forEach(button => { button.disabled = busy; });
+  resolutionButtons.forEach(button => {
+    const unavailablePrototypeOption = exportMode === 'video' && Number(button.dataset.resolution) !== BROWSER_VIDEO_RESOLUTION;
+    button.disabled = busy || unavailablePrototypeOption;
+  });
+  frameRateButtons.forEach(button => {
+    const unavailablePrototypeOption = exportMode === 'video' && Number(button.dataset.frameRate) !== BROWSER_VIDEO_FRAME_RATE;
+    button.disabled = busy || unavailablePrototypeOption;
+  });
   multiFiles.disabled = busy;
   multiPickButton.disabled = busy;
   fileInputs.forEach(input => { input.disabled = busy; });
@@ -323,15 +390,40 @@ function updateLoadHint() {
   syncSegmentWindows();
 }
 
+function selectOutputResolution(resolution) {
+  outputResolution = Number(resolution) === 720 ? 720 : 1080;
+  previewResolutionMeta.textContent = `${outputResolution} × ${outputResolution === 720 ? 1280 : 1920}`;
+  resolutionButtons.forEach(option => {
+    const active = Number(option.dataset.resolution) === outputResolution;
+    option.classList.toggle('active', active);
+    option.setAttribute('aria-pressed', String(active));
+  });
+}
+
+function selectOutputFrameRate(frameRate) {
+  outputFrameRate = Number(frameRate) === 60 ? 60 : 30;
+  frameRateButtons.forEach(option => {
+    const active = Number(option.dataset.frameRate) === outputFrameRate;
+    option.classList.toggle('active', active);
+    option.setAttribute('aria-pressed', String(active));
+  });
+}
+
 function syncExportMode(mode) {
+  const previousResolution = outputResolution;
   exportMode = mode === 'image' ? 'image' : 'video';
   const view = buildExportModeView(exportMode);
+  if (!view.isImage) {
+    selectOutputResolution(BROWSER_VIDEO_RESOLUTION);
+    selectOutputFrameRate(BROWSER_VIDEO_FRAME_RATE);
+  }
   exportModeVideo.classList.toggle('active', view.videoActive);
   exportModeImage.classList.toggle('active', view.imageActive);
   exportModeVideo.setAttribute('aria-pressed', String(view.videoAriaPressed));
   exportModeImage.setAttribute('aria-pressed', String(view.imageAriaPressed));
   exportLengthRow.classList.toggle('hidden', view.hideVideoRows);
   frameRateRow.classList.toggle('hidden', view.hideVideoRows);
+  wasmPrototypeNote.classList.toggle('hidden', view.isImage);
   codecValue.textContent = view.codecText;
   downloadBtn.textContent = view.buttonLabel;
   const checklist = buildChecklistText({
@@ -343,6 +435,9 @@ function syncExportMode(mode) {
   checks.duration.querySelector('span:last-child').textContent = checklist.duration.text;
   checks.preview.querySelector('span:last-child').textContent = checklist.preview.text;
   updateLoadHint();
+  if (previousResolution !== outputResolution) {
+    hasRenderableSlot(slots) ? drawFrame() : drawPlaceholder();
+  }
   setStatus(view.statusText);
 }
 
@@ -818,74 +913,54 @@ async function exportMp4() {
   }
   const wasPlaying = playing;
   let exportSucceeded = false;
-  pausePreview('正在上传并渲染 MP4...');
+  let finishMeasurement = null;
+  let metrics = null;
+  wasmExportActive = true;
+  wasmExportCancelRequested = false;
+  pausePreview('正在启动浏览器本地编码…');
   setProcessing(true);
-  setProgress(0, 'determinate');
-
-  const form = new FormData();
-  form.append('top', slots[0].file);
-  form.append('middle', slots[1].file);
-  form.append('bottom', slots[2].file);
-  form.append('clipLength', String(getClipLength()));
-  form.append('exportLength', String(getExportLength()));
-  form.append('resolution', String(outputResolution));
-  form.append('frameRate', String(outputFrameRate));
-  slots.forEach((slot, index) => form.append(`start${index}`, String(getStart(index))));
-  captionInputs.forEach((input, index) => form.append(`caption${index}`, input.value.trim()));
+  setProgress(0, 'indeterminate');
+  finishMeasurement = beginPerformanceMeasurement();
 
   try {
-    const blob = await new Promise((resolve, reject) => {
-      const xhr = new XMLHttpRequest();
-      xhr.open('POST', '/api/render');
-      xhr.responseType = 'blob';
-      xhr.upload.onprogress = event => {
-        if (!event.lengthComputable) {
-          setStatus('正在上传视频...', 'busy');
-          return;
-        }
-        const percent = Math.round((event.loaded / event.total) * 100);
-        setStatus(`正在上传视频 ${percent}%`, 'busy');
-        setProgress(percent, 'determinate');
-      };
-      xhr.upload.onload = () => {
-        setStatus('上传完成，正在渲染 MP4...', 'busy');
-        setProgress(100, 'indeterminate');
-      };
-      xhr.onload = async () => {
-        if (xhr.status >= 200 && xhr.status < 300) {
-          resolve(xhr.response);
-          return;
-        }
-        if (xhr.response) {
-          const text = await xhr.response.text();
-          if (text) {
-            try {
-              reject(new Error(JSON.parse(text).error || text));
-            } catch {
-              reject(new Error(text));
-            }
-            return;
-          }
-        }
-        reject(new Error(`导出失败，服务返回 ${xhr.status}。`));
-      };
-      xhr.onerror = () => reject(new Error('网络连接失败，请重试。'));
-      xhr.send(form);
+    const captionOverlay = await createCaptionOverlayData();
+    if (wasmExportCancelRequested) throw new DOMException('用户取消了浏览器导出。', 'AbortError');
+    const result = await browserFfmpegRenderer.render({
+      files: slots.map(slot => slot.file),
+      starts: slots.map((_, index) => getStart(index)),
+      clipLength: getClipLength(),
+      exportLength: getExportLength(),
+      captionOverlay,
+      onProgress: percent => setProgress(percent, 'determinate'),
+      onStage: message => {
+        setStatus(message, 'busy');
+        if (message.includes('加载')) setProgress(0, 'indeterminate');
+      }
     });
+    metrics = finishMeasurement();
+    finishMeasurement = null;
 
-    saveExportBlob(blob, {
+    saveExportBlob(result.blob, {
       mode: 'video',
-      resolution: outputResolution,
-      frameRate: outputFrameRate,
-      exportLength: getExportLength()
+      resolution: BROWSER_VIDEO_RESOLUTION,
+      frameRate: BROWSER_VIDEO_FRAME_RATE,
+      exportLength: getExportLength(),
+      performanceText: `${formatDurationMs(metrics.elapsedMs)} · JS 堆峰值 ${formatMemoryBytes(metrics.peakMemoryBytes)}`
     });
     exportSucceeded = true;
-    setStatus('MP4 导出完成，已加入最近导出。', 'success');
+    setStatus('浏览器 MP4 导出完成，视频未上传，已加入最近导出。', 'success');
     setProgress(100, 'determinate');
   } catch (error) {
-    setStatus(error.message || '导出失败。', 'error');
+    metrics ||= finishMeasurement?.();
+    finishMeasurement = null;
+    setStatus(error?.name === 'AbortError'
+      ? '已取消浏览器导出，素材和设置均已保留。'
+      : (error.message || '浏览器导出失败。'), 'error');
     setProgress(0, 'hidden');
   } finally {
+    if (finishMeasurement) finishMeasurement();
+    wasmExportActive = false;
+    wasmExportCancelRequested = false;
     setProcessing(false);
     if (wasPlaying && exportSucceeded) startPreview();
   }
@@ -1044,29 +1119,28 @@ previewProgress.addEventListener('input', async () => {
 exportModeVideo.addEventListener('click', () => syncExportMode('video'));
 exportModeImage.addEventListener('click', () => syncExportMode('image'));
 resolutionButtons.forEach(button => button.addEventListener('click', () => {
-  outputResolution = Number(button.dataset.resolution) === 720 ? 720 : 1080;
-  resolutionButtons.forEach(option => {
-    const active = Number(option.dataset.resolution) === outputResolution;
-    option.classList.toggle('active', active);
-    option.setAttribute('aria-pressed', String(active));
-  });
+  if (button.disabled) return;
+  selectOutputResolution(button.dataset.resolution);
   previewSeen = false;
   hasRenderableSlot(slots) ? drawFrame() : drawPlaceholder();
   updateLoadHint();
   setStatus(`导出分辨率已设为 ${outputResolution} × ${outputResolution === 720 ? 1280 : 1920}。`);
 }));
 frameRateButtons.forEach(button => button.addEventListener('click', () => {
-  outputFrameRate = Number(button.dataset.frameRate) === 60 ? 60 : 30;
-  frameRateButtons.forEach(option => {
-    const active = Number(option.dataset.frameRate) === outputFrameRate;
-    option.classList.toggle('active', active);
-    option.setAttribute('aria-pressed', String(active));
-  });
+  if (button.disabled) return;
+  selectOutputFrameRate(button.dataset.frameRate);
   previewSeen = false;
   updateLoadHint();
   setStatus(`视频导出帧率已设为 ${outputFrameRate}fps。`);
 }));
 downloadBtn.addEventListener('click', () => exportMode === 'image' ? exportPng() : exportMp4());
+cancelExportBtn.addEventListener('click', () => {
+  if (!wasmExportActive) return;
+  wasmExportCancelRequested = true;
+  cancelExportBtn.disabled = true;
+  setStatus('正在取消浏览器导出…', 'busy');
+  browserFfmpegRenderer.cancel();
+});
 
 function setDragState(element, isDragging) {
   element.classList.toggle('dragging', isDragging);
