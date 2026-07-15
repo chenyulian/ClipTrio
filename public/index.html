@@ -140,6 +140,21 @@
       white-space: nowrap;
     }
 
+    .edition-badge {
+      display: inline-flex;
+      min-height: 22px;
+      align-items: center;
+      border: 1px solid #c8bdf0;
+      border-radius: 999px;
+      background: var(--accent-soft);
+      color: var(--accent-dark);
+      font-size: 10px;
+      font-weight: 760;
+      letter-spacing: .02em;
+      padding: 0 8px;
+      white-space: nowrap;
+    }
+
     .header-status {
       color: var(--muted);
       font-size: 12px;
@@ -837,6 +852,21 @@
       line-height: 1.45;
     }
 
+    .wasm-advisory {
+      display: grid;
+      gap: 3px;
+      margin-top: 9px;
+      border: 1px solid #e1d6ae;
+      border-radius: 7px;
+      background: #fffaf0;
+      color: #6d5920;
+      font-size: 10px;
+      line-height: 1.45;
+      padding: 9px 10px;
+    }
+
+    .wasm-advisory strong { color: #4f3e11; font-size: 11px; }
+
     .export-metrics {
       display: grid;
       grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -940,6 +970,7 @@
       <div class="brand-mark">C</div>
       <h1>ClipTrio</h1>
       <span class="subtitle">视频三拼工具</span>
+      <span class="edition-badge" title="视频在当前浏览器中由 ffmpeg.wasm 本地编码">WASM 本地版</span>
     </div>
     <div class="header-status" id="topLoadHint">0 / 3 素材 · 待选择</div>
   </header>
@@ -1069,7 +1100,13 @@
               <span>编码</span>
               <div class="fixed-control" id="codecValue">H.264 MP4</div>
             </div>
-            <div class="prototype-note mode-dependent" id="wasmPrototypeNote">浏览器本地编码技术验证：固定 720×1280 / 30fps，视频不会上传。</div>
+            <div class="mode-dependent" id="wasmPrototypeNote">
+              <div class="prototype-note">浏览器本地编码技术验证：固定 720×1280 / 30fps，视频不会上传。</div>
+              <div class="wasm-advisory" role="note">
+                <strong>本地导出速度较慢</strong>
+                <span>视频将在你的浏览器中编码，通常需要较长等待。若更看重导出速度，推荐使用服务器部署版。</span>
+              </div>
+            </div>
           </div>
         </div>
 
