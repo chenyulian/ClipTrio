@@ -4,7 +4,7 @@
 
 ## WASM 纯前端在线版
 
-在线地址：[https://chenyulian.github.io/ClipTrio/public/](https://chenyulian.github.io/ClipTrio/public/)
+在线地址：[https://nekohatch.github.io/ClipTrio/public/](https://chenyulian.github.io/ClipTrio/public/)
 
 WASM 版使用 `ffmpeg.wasm` 在浏览器本地完成视频处理，三个源视频不会上传到服务器，也不需要部署渲染后端。当前视频固定导出为 720 × 1280、30fps 的 H.264 MP4；图片仍由 Canvas 根据当前预览帧生成。
 
