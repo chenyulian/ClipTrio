@@ -11,6 +11,7 @@ import {
   CAPTION_RE,
   clamp,
   createEmptySlot,
+  formatOutputResolution,
   formatSize,
   formatTime,
   formatPreciseSeconds,
@@ -78,6 +79,13 @@ test('formatSize toggles decimal precision at the 10MB boundary', () => {
   assert.equal(formatSize(10 * 1024 * 1024), '10.0MB');
   assert.equal(formatSize(11 * 1024 * 1024), '11MB');
   assert.equal(formatSize(99 * 1024 * 1024), '99MB');
+});
+
+test('formatOutputResolution matches the two supported output presets', () => {
+  assert.equal(formatOutputResolution(1080), '1080 × 1920');
+  assert.equal(formatOutputResolution(720), '720 × 1280');
+  assert.equal(formatOutputResolution('720'), '720 × 1280');
+  assert.equal(formatOutputResolution(999), '1080 × 1920');
 });
 
 test('formatTime pads minutes and one-decimal seconds', () => {

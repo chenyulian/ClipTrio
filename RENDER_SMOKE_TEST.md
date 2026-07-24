@@ -110,12 +110,19 @@ Canvas uses the browser's system font stack while MP4 rendering uses Noto Sans C
 
 ## Last Verified Result
 
-Verified on 2026-07-13 after the Phase 3 route hardening and Phase 5-6 extraction:
+Verified on 2026-07-23 during the `v1.0.0` release acceptance:
 
-- 62/62 Node tests passed.
+- 74/74 Node tests passed, including the browser-discovered preview resolution-label fix.
 - Syntax checks passed.
 - Direct Docker render passed: H.264/AAC, 1080 x 1920, 30fps, yuv420p, 4.00s.
 - Local proxy render passed with the same contract.
 - Both outputs were 369392 bytes for the deterministic scenario.
 - Samples at 0.25s and 2.25s matched, confirming the two-second loop.
 - Review frames showed all three sections, captions, and caption gradients.
+- Browser acceptance passed at 1440 x 900 and 1280 x 720 with no horizontal overflow and the export action visible.
+- Browser PNG exports completed at 1080 x 1920 and 720 x 1280 with correct recent-export metadata.
+- Browser MP4 export completed through the local proxy at 720 x 1280 and 60fps.
+- A controlled renderer outage produced a persistent actionable error, preserved all sources and settings, and succeeded on retry after the renderer recovered.
+- The browser console contained no application errors.
+
+The host's development-snapshot FFmpeg/FFprobe build returned `write EOF` while the smoke script piped media through the Windows process. Running the same verification with `MEDIA_TOOL_MODE=docker` passed. The Docker render request itself also succeeded independently through `curl`, so this was treated as a host media-tool pipe compatibility issue rather than a renderer failure.

@@ -364,7 +364,7 @@ A change is complete only when:
 - The remote repository is:
 
 ```text
-https://github.com/chenyulian/ClipTrio.git
+https://github.com/nekohatch/ClipTrio.git
 ```
 
 - Never force-push unless explicitly requested.

@@ -6,7 +6,7 @@ RUN apt-get update \
   && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
-COPY package.json ./
+COPY package.json LICENSE THIRD_PARTY_NOTICES.md ./
 COPY server.js server-core.js server-http.js server-process.js ./
 COPY public ./public
 

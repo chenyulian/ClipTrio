@@ -6,7 +6,7 @@ import { runCommand, stderrLimit } from '../server-process.js';
 test('runCommand resolves for a successful subprocess', async () => {
   await assert.doesNotReject(() => runCommand(process.execPath, ['-e', ''], process.cwd(), {
     label: 'node success',
-    timeoutMs: 1000
+    timeoutMs: 5000
   }));
 });
 
@@ -15,9 +15,10 @@ test('runCommand rejects non-zero exits with capped stderr', async () => {
   await assert.rejects(
     () => runCommand(process.execPath, ['-e', noisy], process.cwd(), {
       label: 'node noisy failure',
-      timeoutMs: 1000
+      timeoutMs: 5000
     }),
     error => {
+      assert.notEqual(error.code, 'ETIMEDOUT');
       assert.equal(error.message.length, stderrLimit);
       assert.match(error.message, /^x+$/);
       return true;

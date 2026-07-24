@@ -7,6 +7,7 @@ import {
   clamp,
   createEmptySlot,
   formatPreciseSeconds,
+  formatOutputResolution,
   formatTime,
   getMaxSegmentStart,
   getSegmentEnd,
@@ -51,6 +52,7 @@ const topLoadHint = document.getElementById('topLoadHint');
 const playBtn = document.getElementById('play');
 const playTime = document.getElementById('playTime');
 const previewProgress = document.getElementById('previewProgress');
+const previewResolution = document.getElementById('previewResolution');
 const downloadBtn = document.getElementById('download');
 const multiFiles = document.getElementById('multiFiles');
 const multiPickButton = document.getElementById('multiPickButton');
@@ -1052,8 +1054,9 @@ resolutionButtons.forEach(button => button.addEventListener('click', () => {
   });
   previewSeen = false;
   hasRenderableSlot(slots) ? drawFrame() : drawPlaceholder();
+  previewResolution.textContent = formatOutputResolution(outputResolution);
   updateLoadHint();
-  setStatus(`导出分辨率已设为 ${outputResolution} × ${outputResolution === 720 ? 1280 : 1920}。`);
+  setStatus(`导出分辨率已设为 ${formatOutputResolution(outputResolution)}。`);
 }));
 frameRateButtons.forEach(button => button.addEventListener('click', () => {
   outputFrameRate = Number(button.dataset.frameRate) === 60 ? 60 : 30;
